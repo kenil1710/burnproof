@@ -57,7 +57,9 @@ Every seed is a real claim from an official project page with a Wayback capture,
 | S6 | FLOKI | [capture](https://web.archive.org/web/20231231033517/https://floki.com/) | "Total Supply: 10,000,000,000,000" | **TRUE** | totalSupply 10,000,000,000,000.0000 <= claimed 10,000,000,000,000.0000 | [#10](https://explorer-studio-dev.genlayer.com/tx/0xdbd0af5bc1364f89583029181b246fcb0d9d11dafb55f3338f15f166cac7da6e) |
 | S7 | Saitama Inu (SAITAMA v1) | [capture](https://web.archive.org/web/20211230180830/https://saitamatoken.com/) | "We have already started with 49% of the supply burned." | **TRUE** | dead addresses hold 59.4128% of totalSupply >= claimed 49.0000% | [#7](https://explorer-studio-dev.genlayer.com/tx/0x5d4b18eb5446432eed445ec3fbe1e8453c81d3f289cae1f7732c966be723c600) |
 
-The demo deployment runs every path on chain: each verdict, each refusal, and the consumer's allow and refuse. The log is in [docs/demo-run.log](docs/demo-run.log).
+The demo deployment runs every path on chain: each verdict, each refusal, and the consumer's allow and refuse. The log is in [docs/demo-run.log](docs/demo-run.log). The log keeps every run. The first run had 5 failures because web.archive.org throttled concurrent fetches from Studio Dev's nodes (each ended `PAGE_UNAVAILABLE`, as the rules require). The last run spaces out archive fetches and passes all 20 paths.
+
+S2 was expected FALSE on the numbers: 41.05% is at dead addresses, short of 50%. On chain, both model readings returned NONE, because the sentence says the tokens were "burned to Vitalik Buterin", which means sent to a person. The model can withhold a verdict, but it can never produce one.
 
 ## How to verify
 
