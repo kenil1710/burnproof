@@ -39,14 +39,27 @@ async function onChain() {
 const results = [];
 for (let i = 0; i < seeds.length; i++) {
   const s = seeds[i];
-  let found = (await onChain()).find((c) => c.snapshot === s.snapshot && c.quote === s.quote);
+  const TRANSPORT = ["PAGE_UNAVAILABLE", "RPC_UNAVAILABLE", "RPC_DISAGREE", "BLOCK_NOT_FINALIZED"];
+  const latest = async () => (await onChain()).filter((c) => c.snapshot === s.snapshot && c.quote === s.quote).pop();
+  let found = await latest();
+  // a transport failure (archive or RPC did not answer) is a final UNVERIFIABLE
+  // check; the seed is filed again at a newer block, up to 3 times
+  for (let k = 0; k < 3 && found && TRANSPORT.includes(found.code); k++) {
+    const block = await finalized();
+    const { send } = connect({ address, role: roles[i] === "filer" ? "filer2" : "filer" });
+    console.log(`${s.id} check #${found.check_id} was ${found.code}; filing again at block ${block}`);
+    const r = await send("file_claim", [s.chain_id, s.token, s.snapshot, s.quote, block]);
+    console.log(`  ${r.status} ok=${r.ok} ${r.seconds}s ${r.hash}`, returnedJson(r) ?? r.revertReason?.slice(0, 200));
+    found = await latest();
+    if (found) found.tx = r.hash;
+  }
   if (!found) {
     const block = await finalized();
     const { send } = connect({ address, role: roles[i] });
     console.log(`${s.id} filing as ${roles[i]} at block ${block}`);
     const r = await send("file_claim", [s.chain_id, s.token, s.snapshot, s.quote, block]);
     console.log(`  ${r.status} ok=${r.ok} ${r.seconds}s ${r.hash}`, returnedJson(r) ?? r.revertReason?.slice(0, 200));
-    found = (await onChain()).find((c) => c.snapshot === s.snapshot && c.quote === s.quote);
+    found = await latest();
     if (found) found.tx = r.hash;
   }
   if (!found) { console.log(`  ${s.id} NOT ON CHAIN`); results.push({ id: s.id, error: "not on chain" }); continue; }
