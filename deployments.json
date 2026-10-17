@@ -3,8 +3,10 @@
   "chain_id": 61997,
   "rpc": "https://studio-dev.genlayer.com/api",
   "explorer": "https://explorer-studio-dev.genlayer.com/",
-  "contracts": {
-    "BurnProof": {
+  "contracts": {},
+  "superseded": [
+    {
+      "name": "BurnProof",
       "address": "0x85561EA5bC82Af89f5c9BFc0A21293f561D7B0AE",
       "deploy_tx": "0x36da8ea4098634b4011bc4cd55ab4c06ba36ee2ebe37f754bee1115691f4b1b1",
       "file": "contracts/BurnProof.py",
@@ -18,9 +20,11 @@
       ],
       "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
       "deployed_at": "2026-10-17T08:02:06.193Z",
-      "mode": "CANONICAL"
+      "mode": "CANONICAL",
+      "why": "redeployed: page fetch retries (Wayback dropped concurrent node fetches from Studio Dev; check #2 on the first BurnProof ended PAGE_UNAVAILABLE)"
     },
-    "BurnProofDemo": {
+    {
+      "name": "BurnProofDemo",
       "address": "0xE00aEa3f4Ec8657F89a1134DCa00419EeD66F532",
       "deploy_tx": "0xdf0f27082015a210f895bb5a222f89f48d9498ae0ed8a0806d97f606e1bddcf0",
       "file": "contracts/BurnProof.py",
@@ -34,9 +38,11 @@
       ],
       "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
       "deployed_at": "2026-10-17T08:02:15.603Z",
-      "mode": "DEMO"
+      "mode": "DEMO",
+      "why": "redeployed: page fetch retries (Wayback dropped concurrent node fetches from Studio Dev; check #2 on the first BurnProof ended PAGE_UNAVAILABLE)"
     },
-    "BurnGate": {
+    {
+      "name": "BurnGate",
       "address": "0x30Cf03Bd38D1ed4737eDD023bd8a55FE0eF7445a",
       "deploy_tx": "0xb9bd86e7e9553e070c3591eada61ff0fdd938beaaea844e1a7220e2a788f6f2f",
       "file": "contracts/BurnGate.py",
@@ -48,9 +54,11 @@
       ],
       "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
       "deployed_at": "2026-10-17T08:02:24.106Z",
-      "mode": "CANONICAL"
+      "mode": "CANONICAL",
+      "why": "redeployed: page fetch retries (Wayback dropped concurrent node fetches from Studio Dev; check #2 on the first BurnProof ended PAGE_UNAVAILABLE)"
     },
-    "BurnGateDemo": {
+    {
+      "name": "BurnGateDemo",
       "address": "0x75c76c57d305fDbD20eFf5b54d9920fFE71Df663",
       "deploy_tx": "0x7219710af0dcdfbcacce64c653b4bae527e7a73223e2aea35b155d0324ac2e79",
       "file": "contracts/BurnGate.py",
@@ -62,7 +70,8 @@
       ],
       "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
       "deployed_at": "2026-10-17T08:02:30.376Z",
-      "mode": "DEMO"
+      "mode": "DEMO",
+      "why": "redeployed: page fetch retries (Wayback dropped concurrent node fetches from Studio Dev; check #2 on the first BurnProof ended PAGE_UNAVAILABLE)"
     }
-  }
+  ]
 }

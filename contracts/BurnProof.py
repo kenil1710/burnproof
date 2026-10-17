@@ -61,6 +61,7 @@ MIN_QUOTE = 12
 MAX_QUOTE = 400
 MAX_URL = 600
 MAX_PAGE = 4000000
+PAGE_TRIES = 3
 MAX_PAGE_LIST = 50
 ARCHIVE_PREFIX = "https://web.archive.org/web/"
 MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -460,11 +461,19 @@ def _header(res: typing.Any, name: str) -> str:
 
 def fetch_page(snap: dict) -> dict:
     """{"text"} of the exact capture, or {"code", "why"}."""
-    try:
-        res = gl.nondet.web.request(snap["raw_url"], method="GET")
-    except Exception:
+    res = None
+    st = 0
+    for _ in range(PAGE_TRIES):
+        try:
+            res = gl.nondet.web.request(snap["raw_url"], method="GET")
+        except Exception:
+            res = None
+            continue
+        st = _status(res)
+        if st == 200 or (st != 429 and st < 500):
+            break
+    if res is None:
         return {"code": U_PAGE, "why": "archive did not answer"}
-    st = _status(res)
     if st != 200:
         return {"code": U_PAGE, "why": "archive answered HTTP " + str(st)}
     body = _body(res)

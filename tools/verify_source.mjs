@@ -23,7 +23,8 @@ console.log(`HEAD ${head}`);
 const commits = new Set(Object.values(dep).map((r) => r.commit));
 for (const [name, rec] of Object.entries(dep)) {
   let code = "";
-  for (let i = 0; i < 5 && !code; i++) { try { code = await client.getContractCode(rec.address); } catch { await new Promise((r) => setTimeout(r, 3000)); } }
+  for (let i = 0; i < 12 && !code; i++) { try { code = await client.getContractCode(rec.address); } catch { await new Promise((r) => setTimeout(r, 10000)); } }
+  if (!code) { bad++; console.log(`${name.padEnd(20)} ${rec.address}  UNREADABLE (gen_getContractCode did not answer)`); continue; }
   const atHead = execFileSync("git", ["-C", root, "show", `HEAD:${rec.file}`]);
   const onChain = Buffer.from(String(code), "utf8");
   const same = onChain.equals(atHead), recorded = rec.sha256 === sha(atHead);

@@ -534,6 +534,44 @@ class TestPage(Base):
         stub.WEB.pages.clear()
         self.verdict("UNVERIFIABLE", "PAGE_UNAVAILABLE")
 
+    def test_archive_retried_after_transport_failure(self):
+        calls = {"n": 0}
+        real = stub.WEB.get
+
+        def flaky(url):
+            if url == F.RAW:
+                calls["n"] += 1
+                if calls["n"] % 3 == 1:
+                    raise RuntimeError("connection reset")
+            return real(url)
+        stub.WEB.get = flaky
+        try:
+            self.verdict("TRUE")
+        finally:
+            stub.WEB.get = real
+
+    def test_archive_retried_after_503(self):
+        n = {"k": 0}
+        real = stub.WEB.get
+
+        def busy(url):
+            if url == F.RAW:
+                n["k"] += 1
+                if n["k"] == 1:
+                    return (503, "busy")
+            return real(url)
+        stub.WEB.get = busy
+        try:
+            self.verdict("TRUE")
+        finally:
+            stub.WEB.get = real
+
+    def test_archive_404_not_retried(self):
+        F.page(PAGE, status=404)
+        self.file()
+        # leader fetches once; validators accept a transport UNVERIFIABLE as is
+        self.assertEqual(stub.WEB.log.count(F.RAW), 1)
+
     def test_archive_timeout(self):
         stub.WEB.down.add(F.RAW)
         self.verdict("UNVERIFIABLE", "PAGE_UNAVAILABLE")
