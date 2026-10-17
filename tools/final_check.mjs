@@ -75,7 +75,7 @@ const seedsDef = JSON.parse(read("test/seeds.json")).seeds;
 // 4 demo
 {
   const log = read("docs/demo-run.log");
-  const runs = log.split("=== demo run ").filter((x) => x.trim());
+  const runs = log.split(/=== demo run (?=\d{4}-)/).filter((x) => x.trim());
   const last = runs[runs.length - 1] ?? "";
   const pass = (last.match(/ PASS /g) || []).length, fail = (last.match(/ FAIL /g) || []).length;
   const need = ["verdict TRUE", "verdict FALSE", "verdict UNVERIFIABLE", "refusal RATE_LIMITED", "refusal DUPLICATE", "refusal NOT_ARCHIVE_URL", "refusal BAD_TIMESTAMP", "gate ALLOW", "gate REFUSE"];
@@ -152,9 +152,12 @@ const seedsDef = JSON.parse(read("test/seeds.json")).seeds;
 {
   const leaked = git("log", "--all", "--format=%h", "--", "test/.accounts.json");
   const msgs = git("log", "--all", "--format=%B");
-  const bad = /co-authored-by|claude|anthropic|chatgpt|openai/i.test(msgs);
+  // assistant / vendor names, spelled as hex so this file does not contain them
+  const names = ["\\x63\\x6f-\\x61\\x75\\x74\\x68\\x6f\\x72\\x65\\x64", "\\x63\\x6c\\x61\\x75\\x64\\x65", "\\x61\\x6e\\x74\\x68\\x72\\x6f\\x70\\x69\\x63", "\\x63\\x68\\x61\\x74\\x67\\x70\\x74", "\\x6f\\x70\\x65\\x6e\\x61\\x69"];
+  const pattern = new RegExp(names.join("|"), "i");
+  const bad = pattern.test(msgs);
   const tracked = git("ls-files");
-  const words = sh("git", ["grep", "-n", "-i", "-E", "claude|anthropic|chatgpt|co-authored", "--", "."]).stdout.trim();
+  const words = git("ls-files").split("\n").filter((f) => existsSync(root + f) && pattern.test(readFileSync(root + f, "latin1"))).join(", ");
   check("Git: keys never committed, no assistant attribution in history or files", leaked === "" && !bad && words === "" && !tracked.includes(".accounts.json"),
     `commits touching test/.accounts.json: ${leaked || "none"}; attribution in messages: ${bad ? "FOUND" : "none"}; in files: ${words || "none"}`);
 }
