@@ -1,6 +1,7 @@
 /**
  * Files every seed in test/seeds.json on the CANONICAL BurnProof, pinned at
- * the Ethereum finalized block of the moment, and records each final check in
+ * the seed's block (the first Ethereum block at or after its snapshot, inside
+ * the contract's 24-hour window), and records each final check in
  * docs/seeds.onchain.json. Resumable: a seed whose (snapshot, quote) is already
  * on chain is read back, not filed again.
  *   node seed_canonical.mjs
@@ -14,28 +15,6 @@ const seeds = JSON.parse(readFileSync(new URL("./seeds.json", import.meta.url), 
 const out = new URL("docs/seeds.onchain.json", root);
 const address = dep.contracts.BurnProof.address;
 const roles = ["filer", "filer", "filer", "filer", "filer", "filer2", "filer2", "filer2", "filer2", "filer2"];
-
-async function finalized() {
-  // the finalized block from both frozen RPCs; the lower one, so both hold it
-  const urls = ["https://eth-pokt.nodies.app", "https://rpc.mevblocker.io"];
-  const got = [];
-  for (const url of urls) {
-    for (let i = 1; ; i++) {
-      try {
-        const res = await fetch(url, {
-          method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(20_000),
-          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBlockByNumber", params: ["finalized", false] }),
-        });
-        got.push(parseInt((await res.json()).result.number, 16));
-        break;
-      } catch (e) {
-        if (i >= 8) throw e;
-        await new Promise((r) => setTimeout(r, 5000 * i));
-      }
-    }
-  }
-  return Math.min(...got);
-}
 
 const reader = connect({ address, role: "filer" });
 async function onChain() {
@@ -78,7 +57,7 @@ for (let i = 0; i < seeds.length; i++) {
   const latest = async () => (await onChain()).filter((c) => c.snapshot === s.snapshot && c.quote === s.quote).pop();
   let found = await latest();
   if (!found) {
-    const block = await finalized();
+    const block = s.block;
     const { send } = connect({ address, role: roles[i] });
     console.log(`${s.id} filing as ${roles[i]} at block ${block}`);
     const r = await send("file_claim", [s.chain_id, s.token, s.snapshot, s.quote, block]);
@@ -87,11 +66,12 @@ for (let i = 0; i < seeds.length; i++) {
     if (found) found.tx = r.hash;
   }
   // a transport failure (archive or RPC did not answer) is a final UNVERIFIABLE
-  // check; the seed is filed again at a newer block after a cool-down, up to 4 times
+  // check; the seed is filed again at the next block (still inside the window)
+  // after a cool-down, up to 4 times
   for (let k = 0; k < 4 && found && TRANSPORT.includes(found.code); k++) {
     console.log(`${s.id} check #${found.check_id} was ${found.code}; waiting 180 s, then filing again`);
     await new Promise((r) => setTimeout(r, 180_000));
-    const block = await finalized();
+    const block = s.block + k + 1;
     const role = spare.shift();
     const { send } = connect({ address, role });
     console.log(`${s.id} filing again as ${role} at block ${block}`);

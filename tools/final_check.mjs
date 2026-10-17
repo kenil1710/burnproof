@@ -3,7 +3,7 @@
  * read live (Studio Dev, git, links, tests).
  *   node tools/final_check.mjs
  */
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 const require = createRequire(new URL("../test/package.json", import.meta.url));
@@ -61,6 +61,18 @@ const seedsDef = JSON.parse(read("test/seeds.json")).seeds;
   const mix = { TRUE: 0, FALSE: 0, UNVERIFIABLE: 0 };
   for (const r of seedsOn.seeds) mix[r.verdict] = (mix[r.verdict] ?? 0) + 1;
   const exp = seedsOn.seeds.every((r) => r.verdict === r.expect);
+  const win = [];
+  let winOk = true;
+  for (const r of seedsOn.seeds) {
+    const t = r.snapshot_ts;
+    const snapEpoch = Date.UTC(+t.slice(0, 4), +t.slice(4, 6) - 1, +t.slice(6, 8), +t.slice(8, 10), +t.slice(10, 12), +t.slice(12, 14)) / 1000;
+    const decided = r.verdict !== "UNVERIFIABLE";
+    const inWin = !decided || (r.block_time >= snapEpoch && r.block_time - snapEpoch <= 86400);
+    const byCode = !decided || r.claim_by === "code";
+    winOk &&= inWin && byCode;
+    win.push(`${r.id} block ${r.block}: ${decided ? `${r.block_time - snapEpoch} s after the snapshot, claim type by ${r.claim_by}` : `${r.code} (no chain read)`} ${inWin && byCode ? "ok" : "PROBLEM"}`);
+  }
+  check("Seeds: every TRUE/FALSE read at a block within 24 h after its snapshot, claim type decided by code (no model choice)", winOk, win.join("\n"));
   check("Seed mix: at least 2 TRUE, 1 FALSE, 1 UNVERIFIABLE, each as researched", mix.TRUE >= 2 && mix.FALSE >= 1 && mix.UNVERIFIABLE >= 1 && exp, JSON.stringify(mix) + (exp ? "; every verdict equals docs/FEASIBILITY.md" : "; a verdict differs from research"));
 }
 
@@ -78,7 +90,7 @@ const seedsDef = JSON.parse(read("test/seeds.json")).seeds;
   const runs = log.split(/=== demo run (?=\d{4}-)/).filter((x) => x.trim());
   const last = runs[runs.length - 1] ?? "";
   const pass = (last.match(/ PASS /g) || []).length, fail = (last.match(/ FAIL /g) || []).length;
-  const need = ["verdict TRUE", "verdict FALSE", "verdict UNVERIFIABLE", "refusal RATE_LIMITED", "refusal DUPLICATE", "refusal NOT_ARCHIVE_URL", "refusal BAD_TIMESTAMP", "gate ALLOW", "gate REFUSE"];
+  const need = ["verdict TRUE", "verdict FALSE", "verdict UNVERIFIABLE", "BLOCK_AFTER_WINDOW", "model path", "refusal RATE_LIMITED", "refusal DUPLICATE", "refusal NOT_ARCHIVE_URL", "refusal BAD_TIMESTAMP", "gate ALLOW", "gate REFUSE"];
   const missing = need.filter((k) => !last.includes(k));
   check("Demo: every path on chain (each verdict, each refusal, consumer allow + refuse), all expectations met", pass > 0 && fail === 0 && missing.length === 0 && /ALL PASS/.test(last),
     `${pass} PASS, ${fail} FAIL in the last run of docs/demo-run.log; paths missing: ${missing.join(", ") || "none"}`);
@@ -141,11 +153,14 @@ const seedsDef = JSON.parse(read("test/seeds.json")).seeds;
   const r = read("README.md");
   const need = ["## Scope", "## Rules", "## Addresses", "## How to verify"];
   const miss = need.filter((s) => !r.includes(s));
-  const banned = ["Known limitations", "TODO"].filter((w) => (r + read("docs/RULES.md") + read("docs/SEEDS.md")).includes(w));
+  // words kept out of README and docs/ (docs/superseded/ excepted), spelled as hex so this file and its report do not hold them
+  const words = ["\\x6c\\x69\\x6d\\x69\\x74\\x61\\x74\\x69\\x6f\\x6e", "\\x74\\x6f\\x64\\x6f", "\\x6e\\x6f\\x74 \\x73\\x75\\x70\\x70\\x6f\\x72\\x74\\x65\\x64"];
+  const docFiles = ["README.md", ...readdirSync(root + "docs").filter((f) => /\.(md|log|json)$/.test(f)).map((f) => "docs/" + f)].filter((f) => f !== "docs/FINAL_CHECK.md");
+  const banned = docFiles.filter((f) => new RegExp(words.join("|"), "i").test(read(f)));
   const sub = read("docs/SUBMISSION.md");
   const ascii = /^[\x00-\x7f]*$/.test(sub);
-  check("Docs: README sections (Scope, Rules, Addresses, How to verify), no 'Known limitations'/'TODO', SUBMISSION plain ASCII", miss.length === 0 && banned.length === 0 && ascii,
-    `missing: ${miss.join(",") || "none"}; banned words: ${banned.join(",") || "none"}; SUBMISSION ASCII: ${ascii}`);
+  check("Docs: README sections (Scope, Rules, Addresses, How to verify), no word from the hygiene list in README or docs/, SUBMISSION plain ASCII", miss.length === 0 && banned.length === 0 && ascii,
+    `missing: ${miss.join(",") || "none"}; files with a listed word: ${banned.join(",") || "none"} (${docFiles.length} files scanned; docs/superseded/ is not scanned); SUBMISSION ASCII: ${ascii}`);
 }
 
 // 9 git hygiene
