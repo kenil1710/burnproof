@@ -267,7 +267,7 @@ def number_spans(quote: str) -> list:
 def has_odd_digits(quote: str) -> bool:
     """Digits or percent signs outside ASCII (fullwidth, Arabic-Indic, ...)."""
     for ch in quote:
-        if ord(ch) > 127 and (ch.isdigit() or ch.isnumeric() or ch in "％﹪٪‰"):
+        if ord(ch) > 127 and (ch.isdigit() or ch.isnumeric() or ch in "\uff05\ufe6a\u066a\u2030"):
             return True
     return False
 
