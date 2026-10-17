@@ -1,11 +1,11 @@
 # Final check
 
-Run 2026-10-17T10:22:53.008Z by `tools/final_check.mjs` against commit `9b01b8100f` and Studio Dev. **9/10 PASS.**
+Run 2026-10-17T10:24:13.422Z by `tools/final_check.mjs` against commit `b3c549529b` and Studio Dev. **10/10 PASS.**
 
 ## PASS: Source match: gen_getContractCode byte-identical to contracts/ at HEAD for every deployment, all from one commit, contracts/ unchanged since
 
 ```
-HEAD 9b01b8100f5523d5c503fa29f9bf4303ce76254d
+HEAD b3c549529bb6ca94cbeb21af58719add7ac7678b
 BurnProof            0x85807B7781303c0519a4b53734e04798DAD33fda  chain sha256 f91a03ee469ecd852d05787b4da378c4823425aba7fa151144da88f04c0a24a6  identical to HEAD  matches deployments.json  deploy commit ce9cd9d37c  contracts/ unchanged since
 BurnProofDemo        0x9433099Eb1Ece546c9A092A09D9695c23fc12353  chain sha256 f91a03ee469ecd852d05787b4da378c4823425aba7fa151144da88f04c0a24a6  identical to HEAD  matches deployments.json  deploy commit ce9cd9d37c  contracts/ unchanged since
 BurnGate             0x019C114C50D2a9B3e526E1B473b4840EEE7C0De0  chain sha256 240f74d736804eae9e7c27350e9412a3071cedc75a9afa8b3f452adc78a865ae  identical to HEAD  matches deployments.json  deploy commit ce9cd9d37c  contracts/ unchanged since
@@ -60,7 +60,7 @@ unknown addresses: none
 ## PASS: All offline tests pass (200+)
 
 ```
-Ran 358 tests in 0.152s  OK
+Ran 358 tests in 0.151s  OK
 ```
 
 ## PASS: Docs: README sections (Scope, Rules, Addresses, How to verify), no 'Known limitations'/'TODO', SUBMISSION plain ASCII
@@ -69,8 +69,8 @@ Ran 358 tests in 0.152s  OK
 missing: none; banned words: none; SUBMISSION ASCII: true
 ```
 
-## FAIL: Git: keys never committed, no assistant attribution in history or files
+## PASS: Git: keys never committed, no assistant attribution in history or files
 
 ```
-commits touching test/.accounts.json: none; attribution in messages: none; in files: docs/FINAL_CHECK.md
+commits touching test/.accounts.json: none; attribution in messages: none; in files: none
 ```
