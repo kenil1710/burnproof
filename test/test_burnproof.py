@@ -285,12 +285,12 @@ NUM_CASES = {
     "same_number_twice": ("40% burned, yes 40%", "MULTIPLE_CLAIM_NUMBERS"),
     "no_number": ("we burned half of the supply", "NO_CLAIM_NUMBER"),
     "only_year": ("we burned tokens in 2021", "NO_CLAIM_NUMBER"),
-    "fullwidth_digits": ("we burned ４０% of supply", "NON_ASCII_DIGITS"),
-    "fullwidth_percent": ("we burned 40％ of supply", "NON_ASCII_DIGITS"),
-    "arabic_digits": ("we burned ٤٠% of supply", "NON_ASCII_DIGITS"),
-    "superscript_digit": ("we burned 40% of supply²", "NON_ASCII_DIGITS"),
-    "per_mille": ("we burned 40‰ of supply", "NON_ASCII_DIGITS"),
-    "european_dots": ("burned 400.000.000 tokens", "NO_CLAIM_NUMBER"),
+    "fullwidth_digits": ("we burned \uff14\uff10% of supply", "UNUSUAL_CHARACTERS"),
+    "fullwidth_percent": ("we burned 40\uff05 of supply", "UNUSUAL_CHARACTERS"),
+    "arabic_digits": ("we burned \u0664\u0660% of supply", "UNUSUAL_CHARACTERS"),
+    "superscript_digit": ("we burned 40% of supply\u00b2", "UNUSUAL_CHARACTERS"),
+    "per_mille": ("we burned 40\u2030 of supply", "UNUSUAL_CHARACTERS"),
+    "european_dots": ("burned 400.000.000 tokens", "AMBIGUOUS_NUMBER"),
     "hex_address_ignored": ("40% sent to 0x000000000000000000000000000000000000dEaD", (40, 1, "pct")),
     "version_ignored": ("v2 burned 40% of supply", (40, 1, "pct")),
     "dollar_value": ("burned 40% worth $1,000,000", "MULTIPLE_CLAIM_NUMBERS"),
@@ -601,7 +601,7 @@ URL_CASES = {
     "uppercase_host": ("https://WEB.ARCHIVE.ORG/web/20211224103559/https://example.io/", "NOT_ARCHIVE_URL"),
     "port": ("https://web.archive.org:443/web/20211224103559/https://example.io/", "NOT_ARCHIVE_URL"),
     "subdomain": ("https://wayback.archive.org/web/20211224103559/https://example.io/", "NOT_ARCHIVE_URL"),
-    "cyrillic_a": ("https://web.аrchive.org/web/20211224103559/https://example.io/", "NOT_ARCHIVE_URL"),
+    "cyrillic_a": ("https://web.\u0430rchive.org/web/20211224103559/https://example.io/", "NOT_ARCHIVE_URL"),
     "backslash": ("https://web.archive.org/web/20211224103559/https:\\\\example.io/", "NOT_ARCHIVE_URL"),
     "space_inside": ("https://web.archive.org/web/20211224103559/https://exa mple.io/", "NOT_ARCHIVE_URL"),
     "fragment": ("https://web.archive.org/web/20211224103559/https://example.io/#x", "NOT_ARCHIVE_URL"),
@@ -758,7 +758,7 @@ class TestChain(Base):
     def test_balance_reverts(self):
         for url in (F.ETH_A, F.ETH_B):
             stub.WEB.chains[url].calls[(TOKEN, "0x70a08231" + "0" * 24 + F.DEAD[0][2:])] = stub.MockChain.REVERT
-        self.verdict("UNVERIFIABLE", "RPC_UNAVAILABLE")
+        self.verdict("UNVERIFIABLE", "TOKEN_UNREADABLE")
 
     def test_short_return_word(self):
         for url in (F.ETH_A, F.ETH_B):

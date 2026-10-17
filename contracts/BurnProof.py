@@ -71,7 +71,10 @@ U_SNAPSHOT = "SNAPSHOT_MISMATCH"
 U_QUOTE = "QUOTE_NOT_ON_PAGE"
 U_NO_NUMBER = "NO_CLAIM_NUMBER"
 U_MANY = "MULTIPLE_CLAIM_NUMBERS"
-U_ODD_DIGITS = "NON_ASCII_DIGITS"
+U_ODD_CHARS = "UNUSUAL_CHARACTERS"
+U_AMBIGUOUS = "AMBIGUOUS_NUMBER"
+U_ZERO = "ZERO_CLAIM"
+U_QUALIFIED = "CLAIM_QUALIFIED"
 U_MODEL = "MODEL_UNAVAILABLE"
 U_MODEL_BAD = "MODEL_OUTPUT_INVALID"
 U_NOT_CLAIM = "NOT_A_BURN_CLAIM"
@@ -82,7 +85,7 @@ U_NOT_FINAL = "BLOCK_NOT_FINALIZED"
 U_BEFORE = "BLOCK_BEFORE_SNAPSHOT"
 U_TOKEN = "TOKEN_UNREADABLE"
 U_NO_DEAD = "NO_DEAD_ADDRESS_BURNS"
-MODEL_CODES = (U_MODEL, U_MODEL_BAD, U_NOT_CLAIM, U_READERS)
+MODEL_CODES = (U_MODEL, U_MODEL_BAD, U_NOT_CLAIM, U_READERS, U_QUALIFIED)
 # failures of a transport a validator may not reproduce; the leader's
 # UNVERIFIABLE for one of these is accepted (it asserts nothing).
 TRANSPORT_CODES = (U_PAGE, U_RPC, U_RPC_DIFF, U_NOT_FINAL)
@@ -116,15 +119,36 @@ def _canon(v: typing.Any) -> str:
     return json.dumps(v, sort_keys=True, separators=(",", ":"))
 
 
-def page_text(raw: str) -> str:
-    """The visible text of an HTML page, whitespace-collapsed: comments,
-    <script>/<style>/<noscript>/<template> dropped, tags replaced by a space,
-    entities decoded."""
-    t = re.sub(r"(?s)<!--.*?-->", " ", raw)
-    t = re.sub(r"(?is)<(script|style|noscript|template)\b[^>]*>.*?</\1\s*>", " ", t)
-    t = re.sub(r"(?s)<[^>]*>", " ", t)
+INLINE_TAGS = ("a|abbr|b|bdi|bdo|cite|code|data|dfn|em|font|i|kbd|mark|q|s|samp|small|span"
+               "|strong|sub|sup|time|u|var|wbr")
+BLOCK_MARK = "\x00"
+
+
+def page_blocks(raw: str) -> list:
+    """The visible text of an HTML page as a list of blocks, each
+    whitespace-collapsed. Comments and <script>/<style>/<noscript>/<template>
+    are dropped. Inline tags (<span>, <b>, <a>, ...) vanish without a space,
+    the way a browser renders "4<span></span>0%" as "40%". Every other tag
+    ends a block, so a quote cannot be stitched together from two places on the
+    page. Entities are decoded after the tags are gone."""
+    t = raw.replace(BLOCK_MARK, " ")
+    t = re.sub(r"(?s)<!--.*?-->", BLOCK_MARK, t)
+    t = re.sub(r"(?is)<(script|style|noscript|template)\b[^>]*>.*?</\1\s*>", BLOCK_MARK, t)
+    t = re.sub(r"(?is)</?(?:" + INLINE_TAGS + r")\b[^>]*>", "", t)
+    t = re.sub(r"(?s)<[^>]*>", BLOCK_MARK, t)
     t = html.unescape(t)
-    return collapse(t)
+    return [b for b in (collapse(x) for x in t.split(BLOCK_MARK)) if b != ""]
+
+
+def page_text(raw: str) -> str:
+    return " ".join(page_blocks(raw))
+
+
+def quote_on_page(quote: str, blocks: list) -> bool:
+    for b in blocks:
+        if b.find(quote) >= 0:
+            return True
+    return False
 
 
 def _days_in(y: int, m: int) -> int:
@@ -264,34 +288,69 @@ def number_spans(quote: str) -> list:
     return out
 
 
-def has_odd_digits(quote: str) -> bool:
-    """Digits or percent signs outside ASCII (fullwidth, Arabic-Indic, ...)."""
+INVISIBLE = ("\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180e\u200b\u200c\u200d\u200e\u200f"
+             "\u202a\u202b\u202c\u202d\u202e\u2060\u2061\u2062\u2063\u2064\u2066\u2067\u2068"
+             "\u2069\u206a\u206b\u206c\u206d\u206e\u206f\u3164\ufeff\uffa0")
+
+
+def has_odd_chars(quote: str) -> bool:
+    """Digits or percent signs outside ASCII (fullwidth, Arabic-Indic, ...),
+    or invisible characters (zero-width, bidi controls) anywhere: each can make
+    the number code reads differ from the number a reader sees."""
     for ch in quote:
-        if ord(ch) > 127 and (ch.isdigit() or ch.isnumeric() or ch in "\uff05\ufe6a\u066a\u2030"):
+        if ord(ch) > 127 and (ch.isdigit() or ch.isnumeric() or ch in "\uff05\ufe6a\u066a\u2030\u2031"
+                              or ch in INVISIBLE):
             return True
     return False
 
 
+# Two numbers joined into a range or list ("40-50%", "40 to 50%"), or digit
+# groups that are not a well-formed number ("1,2345", "400.000.000").
+AMBIG_RE = re.compile(
+    r"[0-9]\s*(?:-|\u2010|\u2011|\u2012|\u2013|\u2014|\u2212|~|/|\bto\b|\bor\b|\band\b)\s*[0-9]"
+    r"|[0-9],[0-9]{4}|[0-9],[0-9]{1,2}(?![0-9])|[0-9]\.[0-9]+\.[0-9]",
+    re.IGNORECASE)
+
+# Words that make the number something other than a burn so far or a total
+# supply: a plan, a fee or tax rate, a negation, liquidity, circulating supply.
+QUALIFIERS = ("unburn", "not burn", "n't burn", "never burn", "not been burn", "will ", "to be burn",
+              "plan", "schedul", "target", "goal", "fee", "tax", "per transaction", "each transaction",
+              "every transaction", "liquidity", " lp ", "lp token", "circulat")
+
+
 def claim_number(quote: str) -> dict:
     """{"ok": span} for the quote's single claim-shaped number, or {"code"}."""
-    if has_odd_digits(quote):
-        return {"code": U_ODD_DIGITS}
+    if has_odd_chars(quote):
+        return {"code": U_ODD_CHARS}
+    if AMBIG_RE.search(quote) is not None:
+        return {"code": U_AMBIGUOUS}
     shaped = [s for s in number_spans(quote) if s[4]]
     if len(shaped) == 0:
         return {"code": U_NO_NUMBER}
     if len(shaped) > 1:
         return {"code": U_MANY}
+    if shaped[0][1] == 0:
+        return {"code": U_ZERO}
     return {"ok": shaped[0]}
+
+
+def qualified(quote: str) -> bool:
+    low = " " + quote.lower() + " "
+    for w in QUALIFIERS:
+        if low.find(w) >= 0:
+            return True
+    return False
 
 
 PROMPT = """You read ONE sentence quoted from a crypto token's web page and classify the single burn or supply claim in it.
 
 Return JSON only: {"type": T, "number": N, "unit": U}
 - T is exactly one of:
-  "BURNED_AMOUNT"  - the sentence says at least N tokens have been burned/destroyed/sent to a dead or burn address;
-  "BURNED_PERCENT" - the sentence says at least N percent of the supply has been burned;
+  "BURNED_AMOUNT"  - the sentence says N tokens have already been burned/destroyed/sent to a dead or burn address;
+  "BURNED_PERCENT" - the sentence says N percent of the supply has already been burned;
   "SUPPLY_AT_MOST" - the sentence states the token's total or maximum supply as N;
-  "NONE"           - anything else (no claim, a plan, a fee rate, a price, a holder count, a liquidity-pool burn).
+  "NONE"           - anything else: no claim, a negated claim, a plan or future burn, a fee or tax rate, a price,
+                     a holder count, a liquidity-pool burn, a circulating or remaining supply, an unburned share.
 - N is the number exactly as written in the sentence (copy the characters, e.g. "410", "40%", "1,000,000", "10T").
 - U is the unit words written right after it, if any (e.g. "trillion", "%", "percent", "tokens"), else "".
 
@@ -356,6 +415,8 @@ def check_reading(raw: typing.Any, quote: str, span: list) -> dict:
         return {"code": U_MODEL_BAD}
     if (span[3] == "pct") != (t == BURNED_PERCENT):
         return {"code": U_MODEL_BAD}
+    if qualified(quote):
+        return {"code": U_QUALIFIED}
     return {"type": t, "value": [str(span[1]), str(span[2])], "text": span[0]}
 
 
@@ -422,7 +483,7 @@ def fetch_page(snap: dict) -> dict:
             orig = link[j + 1:i]
     if host_of(orig) != snap["host"]:
         return {"code": U_SNAPSHOT, "why": "capture is of " + (host_of(orig) or "an unknown host") + ", not " + snap["host"]}
-    return {"text": page_text(body.decode("utf-8", errors="replace"))}
+    return {"blocks": page_blocks(body.decode("utf-8", errors="replace"))}
 
 
 def rpc_one(url: str, method: str, params: list) -> typing.Any:
@@ -491,13 +552,15 @@ def read_rpc(url: str, chain_id: int, token: str, block: int) -> dict:
         return out
     dec = rpc_one(url, "eth_call", [{"to": token, "data": "0x313ce567"}, tag])
     sup = rpc_one(url, "eth_call", [{"to": token, "data": "0x18160ddd"}, tag])
+    rs = [dec, sup]
+    for d in DEAD:
+        rs.append(rpc_one(url, "eth_call", [{"to": token, "data": "0x70a08231" + "0" * 24 + d[2:]}, tag]))
+    if any(r[0] == "revert" for r in rs):
+        out["reverted"] = True
+        return out
     out["decimals"] = _word(dec)
     out["supply"] = str(_word(sup))
-    bals = []
-    for d in DEAD:
-        r = rpc_one(url, "eth_call", [{"to": token, "data": "0x70a08231" + "0" * 24 + d[2:]}, tag])
-        bals.append(str(_word(r)))
-    out["dead"] = bals
+    out["dead"] = [str(_word(r)) for r in rs[2:]]
     return out
 
 
@@ -516,7 +579,7 @@ def read_chain(chain_id: int, token: str, block: int) -> dict:
     for r, u in ((a, urls[0]), (b, urls[1])):
         if r["finalized"] < block:
             return {"code": U_NOT_FINAL, "why": host_of(u) + " finalized only up to " + str(r["finalized"])}
-    keep = ["hash", "time", "has_code", "decimals", "supply", "dead"]
+    keep = ["hash", "time", "has_code", "reverted", "decimals", "supply", "dead"]
     pa = {k: a.get(k) for k in keep}
     pb = {k: b.get(k) for k in keep}
     if _canon(pa) != _canon(pb):
@@ -524,6 +587,8 @@ def read_chain(chain_id: int, token: str, block: int) -> dict:
         return {"code": U_RPC_DIFF, "why": "the two RPCs differ on " + ",".join(diff)}
     if not pa["has_code"]:
         return {"code": U_TOKEN, "why": "no contract at the token address at this block"}
+    if pa["reverted"]:
+        return {"code": U_TOKEN, "why": "decimals(), totalSupply() or balanceOf() reverted"}
     if pa["decimals"] > 36:
         return {"code": U_TOKEN, "why": "decimals() answered " + str(pa["decimals"])}
     supply = int(pa["supply"])
@@ -593,11 +658,13 @@ def front(p: dict) -> dict:
     page = fetch_page(p["snap"])
     if "code" in page:
         return unv("page", page["code"], page["why"])
-    if page["text"].find(p["quote"]) < 0:
-        return unv("page", U_QUOTE, "the quote is not in the archived page text")
+    if not quote_on_page(p["quote"], page["blocks"]):
+        return unv("page", U_QUOTE, "the quote is not in the text of one block of the archived page")
     cn = claim_number(p["quote"])
     if "code" in cn:
-        why = {U_ODD_DIGITS: "the quote writes a digit or percent sign outside ASCII",
+        why = {U_ODD_CHARS: "the quote holds a non-ASCII digit or percent sign, or an invisible character",
+               U_AMBIGUOUS: "the quote joins numbers into a range or list, or groups digits ambiguously",
+               U_ZERO: "the claimed number is zero",
                U_NO_NUMBER: "the quote holds no claim-shaped number",
                U_MANY: "the quote holds more than one claim-shaped number"}[cn["code"]]
         return unv("quote", cn["code"], why)
