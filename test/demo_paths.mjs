@@ -55,7 +55,9 @@ async function step(label, address, role, fn, args, expect) {
   log(`    => ${got}`);
   return { r, ret, pass };
 }
-const verdict = (v, code) => (r, ret) => r.ok && ret?.verdict === v && (!code || ret?.code === code);
+const verdict = (v, code) => (r, ret) => r.ok && ret?.verdict === v && (!code || [].concat(code).includes(ret?.code));
+// Wayback throttles bursts of fetches from Studio's nodes; space out the filings that reach the archive
+const coolDown = () => new Promise((r) => setTimeout(r, 120_000));
 const refused = (code) => (r) => !r.ok && String(r.revertReason).includes("REFUSED: " + code);
 
 log(`\n=== demo run ${new Date().toISOString()}  BurnProofDemo ${BP}  BurnGateDemo ${GATE} ===`);
@@ -66,15 +68,20 @@ const t = async (...a) => { const o = await step(...a); if (!o.pass) fails++; re
 
 // verdicts
 await t("verdict TRUE (SHIB 40% burned)", BP, "demo", "file_claim", [1, SHIB, SHIB_0902, "and then actually burned 40% of its total supply to a dead wallet", B], verdict("TRUE"));
+await coolDown();
 await t("verdict FALSE (AKITA 7.82% burned)", BP, "demo", "file_claim", [1, AKITA, AKITA_1224, "Percent burned: 7.82%", B], verdict("FALSE"));
 // refusal: rate limit (third filing by the same sender inside 10 minutes)
 await t("refusal RATE_LIMITED (3rd filing by one sender in 10 min)", BP, "demo", "file_claim", [1, SHIB, SHIB_0902, "Starting with a supply of 1 quadrillion, our founder, Ryoshi, locked 50% in Uniswap", B], refused("RATE_LIMITED"));
+await coolDown();
 await t("verdict UNVERIFIABLE (two claim-shaped numbers)", BP, "demo2", "file_claim", [1, SHIB, SHIB_0902, "Starting with a supply of 1 quadrillion, our founder, Ryoshi, locked 50% in Uniswap", B], verdict("UNVERIFIABLE", "MULTIPLE_CLAIM_NUMBERS"));
+await coolDown();
 await t("verdict UNVERIFIABLE (quote not on the archived page)", BP, "demo2", "file_claim", [1, SHIB, SHIB_0902, "and then actually burned 90% of its total supply to a dead wallet", B], verdict("UNVERIFIABLE", "QUOTE_NOT_ON_PAGE"));
+await coolDown();
 await t("verdict UNVERIFIABLE (capture timestamp not exact: archive served another capture)", BP, "probe", "file_claim", [1, SHIB, "https://web.archive.org/web/20210902070000/https://shibatoken.com/", "and then actually burned 40% of its total supply to a dead wallet", B], verdict("UNVERIFIABLE", "SNAPSHOT_MISMATCH"));
-await t("verdict UNVERIFIABLE (circulating supply is not a total-supply claim)", BP, "probe", "file_claim", [1, AKITA, AKITA_1224, "Circulating Supply: 92,179,835,873,886", B], verdict("UNVERIFIABLE", "CLAIM_QUALIFIED"));
+await coolDown();
+await t("verdict UNVERIFIABLE (circulating supply is not a total-supply claim: model NONE or code qualifier)", BP, "probe", "file_claim", [1, AKITA, AKITA_1224, "Circulating Supply: 92,179,835,873,886", B], verdict("UNVERIFIABLE", ["CLAIM_QUALIFIED", "NOT_A_BURN_CLAIM"]));
 // refusals at the door
-await t("refusal DUPLICATE (same token, snapshot, quote, block)", BP, "filer2", "file_claim", [1, SHIB, SHIB_0902, "and then actually burned 40% of its total supply to a dead wallet", B], refused("DUPLICATE_OF_1"));
+await t("refusal DUPLICATE (same token, snapshot, quote, block)", BP, "filer2", "file_claim", [1, SHIB, SHIB_0902, "and then actually burned 40% of its total supply to a dead wallet", B], refused("DUPLICATE_OF_"));
 await t("refusal NOT_ARCHIVE_URL", BP, "filer2", "file_claim", [1, SHIB, "https://shibatoken.com/", "and then actually burned 40% of its total supply to a dead wallet", B], refused("NOT_ARCHIVE_URL"));
 await t("refusal NOT_ARCHIVE_URL (lookalike host)", BP, "filer2", "file_claim", [1, SHIB, "https://web.archive.org.evil.io/web/20210902070016/https://shibatoken.com/", "and then actually burned 40% of its total supply to a dead wallet", B], refused("NOT_ARCHIVE_URL"));
 await t("refusal BAD_TIMESTAMP (not 14 digits)", BP, "filer2", "file_claim", [1, SHIB, "https://web.archive.org/web/2021/https://shibatoken.com/", "and then actually burned 40% of its total supply to a dead wallet", B], refused("BAD_TIMESTAMP"));

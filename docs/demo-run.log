@@ -7,3 +7,80 @@ pinned Ethereum finalized block 26211243
     demo -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210902070016/https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",26211243])
     tx 0xde618f7c77c4d18619dec489205fc922bd3dcf6332cc42ef15325a3e16357abf status ACCEPTED 28.0s
     => {"check_id":1,"code":"BURNED_ENOUGH","verdict":"TRUE","why":"dead addresses hold 41.0493% of totalSupply >= claimed 40.0000% -0.5%"}
+[2026-10-17T09:16:42.783Z] FAIL verdict FALSE (AKITA 7.82% burned)
+    demo -> file_claim([1,"0x3301ee63fb29f863f2333bd4466acb46cd8323e6","https://web.archive.org/web/20211224103559/https://www.akita.network/","Percent burned: 7.82%",26211243])
+    tx 0x9daecabee43b8139005516e8b4cb64858af30def45a0478ec58abf8d3fd07cb2 status ACCEPTED 40.5s
+    => {"check_id":2,"code":"PAGE_UNAVAILABLE","verdict":"UNVERIFIABLE","why":"archive did not answer"}
+[2026-10-17T09:16:57.477Z] PASS refusal RATE_LIMITED (3rd filing by one sender in 10 min)
+    demo -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210902070016/https://shibatoken.com/","Starting with a supply of 1 quadrillion, our founder, Ryoshi, locked 50% in Uniswap",26211243])
+    tx 0x45748e42348f5568b1efed847ccdc48a5617da5bfc608210d1da4863284f0de4 status ACCEPTED 14.7s
+    => REVERTED REFUSED: RATE_LIMITED_UNTIL_1792229144
+[2026-10-17T09:17:19.482Z] FAIL verdict UNVERIFIABLE (two claim-shaped numbers)
+    demo2 -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210902070016/https://shibatoken.com/","Starting with a supply of 1 quadrillion, our founder, Ryoshi, locked 50% in Uniswap",26211243])
+    tx 0x421a0f51ef25881b54bd8fcc89798f1f0e2108650846739a393bc9afcd300306 status ACCEPTED 22.0s
+    => {"check_id":3,"code":"PAGE_UNAVAILABLE","verdict":"UNVERIFIABLE","why":"archive did not answer"}
+[2026-10-17T09:17:42.503Z] FAIL verdict UNVERIFIABLE (quote not on the archived page)
+    demo2 -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210902070016/https://shibatoken.com/","and then actually burned 90% of its total supply to a dead wallet",26211243])
+    tx 0xdbb7e0cc1fe7e394716d4b51af0ed8ade36763cd0d2893a960a6023939ae185e status ACCEPTED 23.0s
+    => {"check_id":4,"code":"PAGE_UNAVAILABLE","verdict":"UNVERIFIABLE","why":"archive did not answer"}
+[2026-10-17T09:18:05.297Z] PASS verdict UNVERIFIABLE (capture timestamp not exact: archive served another capture)
+    probe -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210902070000/https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",26211243])
+    tx 0x4f4bcfc8833e02a895663fb72ba4591d18e5f71f4bbed67f08a662a356a75207 status ACCEPTED 22.8s
+    => {"check_id":5,"code":"SNAPSHOT_MISMATCH","verdict":"UNVERIFIABLE","why":"archive served capture Thu, 02 Sep 2021 07:00:16 GMT, not 02 Sep 2021 07:00:00 GMT"}
+[2026-10-17T09:18:33.473Z] FAIL verdict UNVERIFIABLE (circulating supply is not a total-supply claim)
+    probe -> file_claim([1,"0x3301ee63fb29f863f2333bd4466acb46cd8323e6","https://web.archive.org/web/20211224103559/https://www.akita.network/","Circulating Supply: 92,179,835,873,886",26211243])
+    tx 0x207bf523d5af7951f73b83d895f74870d8c36167a687fd50466af4c0be882622 status ACCEPTED 28.2s
+    => {"check_id":6,"code":"NOT_A_BURN_CLAIM","verdict":"UNVERIFIABLE","why":"the model reading did not pass code validation"}
+[2026-10-17T09:18:47.096Z] PASS refusal DUPLICATE (same token, snapshot, quote, block)
+    filer2 -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210902070016/https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",26211243])
+    tx 0xf51683702a934f70abb6bd31c07900e88f299a1df5f1430d815decd2e627aec8 status ACCEPTED 13.6s
+    => REVERTED REFUSED: DUPLICATE_OF_1
+[2026-10-17T09:19:01.157Z] PASS refusal NOT_ARCHIVE_URL
+    filer2 -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",26211243])
+    tx 0x0253efda9988c9237e062232472ba022f3044adcb868167c5960a0a35ab1b7e8 status ACCEPTED 14.1s
+    => REVERTED REFUSED: NOT_ARCHIVE_URL
+[2026-10-17T09:19:17.974Z] PASS refusal NOT_ARCHIVE_URL (lookalike host)
+    filer2 -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org.evil.io/web/20210902070016/https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",26211243])
+    tx 0x0fdaca3545fb343650edfbe07f52567e0edcb7450c134830d3937b0f1efba914 status ACCEPTED 16.8s
+    => REVERTED REFUSED: NOT_ARCHIVE_URL
+[2026-10-17T09:19:31.194Z] PASS refusal BAD_TIMESTAMP (not 14 digits)
+    filer2 -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/2021/https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",26211243])
+    tx 0x494845faffee346137e747e8e1fbf7862aff4ca183156a3c2e6fae81e186b87b status ACCEPTED 13.2s
+    => REVERTED REFUSED: BAD_TIMESTAMP
+[2026-10-17T09:19:44.741Z] PASS refusal BAD_TIMESTAMP (Feb 30)
+    filer2 -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210230070016/https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",26211243])
+    tx 0xbdb23feba45ed23d93d0aa396eb1a4d41bed1b180f04ed699e350412010405b6 status ACCEPTED 13.5s
+    => REVERTED REFUSED: BAD_TIMESTAMP
+[2026-10-17T09:19:57.704Z] PASS refusal UNSUPPORTED_CHAIN (BSC)
+    filer2 -> file_claim([56,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210902070016/https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",26211243])
+    tx 0x988690a7ea28eb4631dc5094cc4c4a8f1ce1e09de8bf81de96f7261c19c5762f status ACCEPTED 13.0s
+    => REVERTED REFUSED: UNSUPPORTED_CHAIN
+[2026-10-17T09:20:14.562Z] PASS refusal BAD_TOKEN_ADDRESS (a dead address)
+    filer2 -> file_claim([1,"0x000000000000000000000000000000000000dEaD","https://web.archive.org/web/20210902070016/https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",26211243])
+    tx 0x0e344a00596debcc908be349c6ac7b2152c300d87b6b96f47be9b40acb67c98b status ACCEPTED 16.9s
+    => REVERTED REFUSED: BAD_TOKEN_ADDRESS
+[2026-10-17T09:20:27.472Z] PASS refusal BAD_QUOTE (too short)
+    filer2 -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210902070016/https://shibatoken.com/","40% burned",26211243])
+    tx 0x599d4b38890fd9dadd127ca54bf2f5b068a30ab5506fd41c55a425d77b0580a8 status ACCEPTED 12.9s
+    => REVERTED REFUSED: BAD_QUOTE
+[2026-10-17T09:20:43.624Z] PASS refusal BAD_BLOCK
+    filer2 -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210902070016/https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",0])
+    tx 0x56fcb1f00eebdf48ac1ec22407400f5a9b73372e652d7ed0f411488db76d8a7b status ACCEPTED 16.1s
+    => REVERTED REFUSED: BAD_BLOCK
+[2026-10-17T09:20:59.092Z] PASS gate ALLOW (SHIB: latest decisive claim from shibatoken.com is TRUE)
+    demo -> request_listing([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","shibatoken.com"])
+    tx 0x58e2d4dab60723631dcc6a0c6a6d487abcd20a851c5ee14c677a895508c4cb99 status ACCEPTED 15.5s
+    => {"check_id":1,"listed":true,"reason":"latest decisive burn claim from shibatoken.com is TRUE (BurnProof check #1)","request_id":1,"verdict":"TRUE"}
+[2026-10-17T09:21:14.670Z] FAIL gate REFUSE (AKITA: latest decisive claim from www.akita.network is FALSE)
+    demo -> request_listing([1,"0x3301ee63fb29f863f2333bd4466acb46cd8323e6","www.akita.network"])
+    tx 0x770c1e4ac662fb7024cd56c20f6b1a150a5d8bead670631cb8f7c542361bf44e status ACCEPTED 15.6s
+    => {"check_id":0,"listed":true,"reason":"no decisive burn claim from www.akita.network on BurnProof","request_id":2,"verdict":"NONE"}
+[2026-10-17T09:21:29.069Z] PASS gate ALLOW (FLOKI: no decisive claim from floki.com)
+    demo -> request_listing([1,"0xcf0c122c6b73ff809c693db761e7baebe62b6a2e","floki.com"])
+    tx 0xa3da1cea2ebd9884f1b958690ab2231ae557bf763b5d2997c24d92f757d71de5 status ACCEPTED 14.4s
+    => {"check_id":0,"listed":true,"reason":"no decisive burn claim from floki.com on BurnProof","request_id":3,"verdict":"NONE"}
+[2026-10-17T09:21:40.519Z] PASS gate refusal BAD_SITE
+    demo -> request_listing([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","not a site"])
+    tx 0xebef25dc375f8142dcf39fd23a01fde5db158bea0d6462c6da7e3b6f663e5814 status ACCEPTED 11.4s
+    => REVERTED REFUSED: BAD_SITE
+=== demo run done: 5 FAIL ===
