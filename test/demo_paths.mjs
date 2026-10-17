@@ -22,7 +22,9 @@ const SHIB_0902 = "https://web.archive.org/web/20210902070016/https://shibatoken
 const AKITA_1224 = "https://web.archive.org/web/20211224103559/https://www.akita.network/";
 const FLOKI_1231 = "https://web.archive.org/web/20231231033517/https://floki.com/";
 // the first Ethereum block at or after each snapshot (inside the 24-hour window)
-const B_SHIB = 13144796, B_AKITA = 13867390, B_FLOKI = 18902821;
+// each run files at blocks a few seconds later than the last run's (still inside the window), so a rerun is not a DUPLICATE
+const RUN = (readFileSync(logFile, "utf8").match(/=== demo run \d{4}-/g) || []).length;
+const B_SHIB = 13144796 + RUN, B_AKITA = 13867390 + RUN, B_FLOKI = 18902821 + RUN;
 
 async function finalized() {
   // the finalized block from both frozen RPCs; the lower one, so both hold it
