@@ -47,7 +47,15 @@ BurnProof and BurnProofDemo run the same file, byte for byte. They differ only i
 
 Every seed is a real claim from an official project page with a Wayback capture, filed on the canonical contract. [docs/SEEDS.md](docs/SEEDS.md) lists each check with its Wayback link, Etherscan token and block links, and the numbers read. The research behind them, including the rejected candidates and the measured RPCs, is in [docs/FEASIBILITY.md](docs/FEASIBILITY.md).
 
-SEEDS_TABLE
+| Seed | Project | Wayback | Quote | Verdict | Why (computed by code) | Check / tx |
+|---|---|---|---|---|---|---|
+| S1 | Shiba Inu (SHIB) | [capture](https://web.archive.org/web/20210902070016/https://shibatoken.com/) | "and then actually burned 40% of its total supply to a dead wallet" | **TRUE** | dead addresses hold 41.0493% of totalSupply >= claimed 40.0000% | [#1](https://explorer-studio-dev.genlayer.com/tx/0xcec1a482f4ab24f51b92744ac026796a3856bd8a514edb823713a1357ff832db) |
+| S2 | Shiba Inu (SHIB) | [capture](https://web.archive.org/web/20210604091955/https://shibatoken.com/) | "The remaining 50% was burned to Vitalik Buterin" | **UNVERIFIABLE** | NOT_A_BURN_CLAIM | [#2](https://explorer-studio-dev.genlayer.com/tx/0x72ec4b87e8104531850f5bc732febe51e5accdde0dc5d3a95d164961648f6d56) |
+| S3 | Shiba Inu (SHIB) | [capture](https://web.archive.org/web/20210902070016/https://shibatoken.com/) | "Starting with a supply of 1 quadrillion, our founder, Ryoshi, locked 50% in Uniswap" | **UNVERIFIABLE** | MULTIPLE_CLAIM_NUMBERS | [#3](https://explorer-studio-dev.genlayer.com/tx/0x9778257dd8965b78169b90cacd479c4fbcaf31eed79557ef3eb6ab630675b835) |
+| S4 | Akita Inu (AKITA) | [capture](https://web.archive.org/web/20211224103559/https://www.akita.network/) | "Percent burned: 7.82%" | **FALSE** | dead addresses hold 5.0201% of totalSupply < claimed 7.8200% | [#8](https://explorer-studio-dev.genlayer.com/tx/0xa1829716a5f0e0e96d2763d15c6f72774e40ea65fa9fc12acf184c5b959134cc) |
+| S5 | Akita Inu (AKITA) | [capture](https://web.archive.org/web/20211224103559/https://www.akita.network/) | "Max Supply: 100,000,000,000,000" | **TRUE** | totalSupply 99,999,999,999,999.9999 <= claimed 100,000,000,000,000.0000 | [#9](https://explorer-studio-dev.genlayer.com/tx/0x2cbe14c657bb503c26c25b58bc81feebaa76a308e618e133c2781b70f9fcb34c) |
+| S6 | FLOKI | [capture](https://web.archive.org/web/20231231033517/https://floki.com/) | "Total Supply: 10,000,000,000,000" | **TRUE** | totalSupply 10,000,000,000,000.0000 <= claimed 10,000,000,000,000.0000 | [#10](https://explorer-studio-dev.genlayer.com/tx/0xdbd0af5bc1364f89583029181b246fcb0d9d11dafb55f3338f15f166cac7da6e) |
+| S7 | Saitama Inu (SAITAMA v1) | [capture](https://web.archive.org/web/20211230180830/https://saitamatoken.com/) | "We have already started with 49% of the supply burned." | **TRUE** | dead addresses hold 59.4128% of totalSupply >= claimed 49.0000% | [#7](https://explorer-studio-dev.genlayer.com/tx/0x5d4b18eb5446432eed445ec3fbe1e8453c81d3f289cae1f7732c966be723c600) |
 
 The demo deployment runs every path on chain: each verdict, each refusal, and the consumer's allow and refuse. The log is in [docs/demo-run.log](docs/demo-run.log).
 
