@@ -5,63 +5,63 @@
   "explorer": "https://explorer-studio-dev.genlayer.com/",
   "contracts": {
     "BurnProof": {
-      "address": "0x85807B7781303c0519a4b53734e04798DAD33fda",
-      "deploy_tx": "0x1c4e9e1181ac5eb2d8c734c35e1d14995fd8860ef79f172ed70564c6ac2be102",
+      "address": "0xF020B9B711781Ed712195584315F8dB49d1f89f4",
+      "deploy_tx": "0x94ec90dbb441b35156fbdc3baf6662da0b68fde16ba43d7d9226dd2966d9209f",
       "file": "contracts/BurnProof.py",
-      "commit": "ce9cd9d37c95b482e0941ec6b4c7b5f3c7e50692",
-      "bytes": 39976,
-      "sha256": "f91a03ee469ecd852d05787b4da378c4823425aba7fa151144da88f04c0a24a6",
+      "commit": "663690037372a21f64c60deb4a73f800f27224f6",
+      "bytes": 42342,
+      "sha256": "7356b4261b1baef8ed9bed664253e833fcb90303fd9a7c2f367d4375e2aa2c67",
       "constructor_args": [
         "CANONICAL",
         5,
         3600
       ],
       "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
-      "deployed_at": "2026-10-17T09:07:19.720Z",
+      "deployed_at": "2026-10-17T11:16:27.561Z",
       "mode": "CANONICAL"
     },
     "BurnProofDemo": {
-      "address": "0x9433099Eb1Ece546c9A092A09D9695c23fc12353",
-      "deploy_tx": "0x941580c947a6fbb67abc525d4686adde5743cc0723801c91ba772cb223728c91",
+      "address": "0x019603fa4756dafDf820932b192D49d2Fe8D5014",
+      "deploy_tx": "0xcebf0b63780ca3bd94bfabcc1350cc8cca65c8a9dcc094ab14ea8ee1c1a89932",
       "file": "contracts/BurnProof.py",
-      "commit": "ce9cd9d37c95b482e0941ec6b4c7b5f3c7e50692",
-      "bytes": 39976,
-      "sha256": "f91a03ee469ecd852d05787b4da378c4823425aba7fa151144da88f04c0a24a6",
+      "commit": "663690037372a21f64c60deb4a73f800f27224f6",
+      "bytes": 42342,
+      "sha256": "7356b4261b1baef8ed9bed664253e833fcb90303fd9a7c2f367d4375e2aa2c67",
       "constructor_args": [
         "DEMO",
         2,
         600
       ],
       "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
-      "deployed_at": "2026-10-17T09:07:29.014Z",
+      "deployed_at": "2026-10-17T11:16:43.324Z",
       "mode": "DEMO"
     },
     "BurnGate": {
-      "address": "0x019C114C50D2a9B3e526E1B473b4840EEE7C0De0",
-      "deploy_tx": "0x713ee878a35553f9f264a27819ae57bf3f9f6447e42d3c18dda5ca48515dd09e",
+      "address": "0x16aAcCD15eB1756075bE15e727Ab3eBaBe8d2448",
+      "deploy_tx": "0xbaac2f614b499a94c90b03e9a56868a06a470e7714c7cb8bb9594e522079599a",
       "file": "contracts/BurnGate.py",
-      "commit": "ce9cd9d37c95b482e0941ec6b4c7b5f3c7e50692",
+      "commit": "663690037372a21f64c60deb4a73f800f27224f6",
       "bytes": 6296,
       "sha256": "240f74d736804eae9e7c27350e9412a3071cedc75a9afa8b3f452adc78a865ae",
       "constructor_args": [
-        "0x85807B7781303c0519a4b53734e04798DAD33fda"
+        "0xF020B9B711781Ed712195584315F8dB49d1f89f4"
       ],
       "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
-      "deployed_at": "2026-10-17T09:07:34.489Z",
+      "deployed_at": "2026-10-17T11:16:49.541Z",
       "mode": "CANONICAL"
     },
     "BurnGateDemo": {
-      "address": "0x01cc28ff81e5d773F6fAe6b37E4e71b85e2Bc1C4",
-      "deploy_tx": "0xbe4c68dd71c8454f2bb0e03b4c88dd4d16ee600847d1ec5f0161f91681c44b1e",
+      "address": "0x307ed86b8CccAb6841ae18FaE1c559C89d7F606E",
+      "deploy_tx": "0xf8747448d4df524e8bb6e3e2b39bb1310df3836e7017afe218d5f3ca7e99eb41",
       "file": "contracts/BurnGate.py",
-      "commit": "ce9cd9d37c95b482e0941ec6b4c7b5f3c7e50692",
+      "commit": "663690037372a21f64c60deb4a73f800f27224f6",
       "bytes": 6296,
       "sha256": "240f74d736804eae9e7c27350e9412a3071cedc75a9afa8b3f452adc78a865ae",
       "constructor_args": [
-        "0x9433099Eb1Ece546c9A092A09D9695c23fc12353"
+        "0x019603fa4756dafDf820932b192D49d2Fe8D5014"
       ],
       "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
-      "deployed_at": "2026-10-17T09:07:43.023Z",
+      "deployed_at": "2026-10-17T11:16:58.414Z",
       "mode": "DEMO"
     }
   },
@@ -133,6 +133,78 @@
       "deployed_at": "2026-10-17T08:02:30.376Z",
       "mode": "DEMO",
       "why": "redeployed: page fetch retries (Wayback dropped concurrent node fetches from Studio Dev; check #2 on the first BurnProof ended PAGE_UNAVAILABLE)"
+    },
+    {
+      "name": "BurnProof",
+      "address": "0x85807B7781303c0519a4b53734e04798DAD33fda",
+      "deploy_tx": "0x1c4e9e1181ac5eb2d8c734c35e1d14995fd8860ef79f172ed70564c6ac2be102",
+      "file": "contracts/BurnProof.py",
+      "commit": "ce9cd9d37c95b482e0941ec6b4c7b5f3c7e50692",
+      "bytes": 39976,
+      "sha256": "f91a03ee469ecd852d05787b4da378c4823425aba7fa151144da88f04c0a24a6",
+      "constructor_args": [
+        "CANONICAL",
+        5,
+        3600
+      ],
+      "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
+      "deployed_at": "2026-10-17T09:07:19.720Z",
+      "mode": "CANONICAL",
+      "superseded_by": "0xF020B9B711781Ed712195584315F8dB49d1f89f4",
+      "why": "1.1.0: block window 24h after snapshot; claim type by code"
+    },
+    {
+      "name": "BurnProofDemo",
+      "address": "0x9433099Eb1Ece546c9A092A09D9695c23fc12353",
+      "deploy_tx": "0x941580c947a6fbb67abc525d4686adde5743cc0723801c91ba772cb223728c91",
+      "file": "contracts/BurnProof.py",
+      "commit": "ce9cd9d37c95b482e0941ec6b4c7b5f3c7e50692",
+      "bytes": 39976,
+      "sha256": "f91a03ee469ecd852d05787b4da378c4823425aba7fa151144da88f04c0a24a6",
+      "constructor_args": [
+        "DEMO",
+        2,
+        600
+      ],
+      "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
+      "deployed_at": "2026-10-17T09:07:29.014Z",
+      "mode": "DEMO",
+      "superseded_by": "0x019603fa4756dafDf820932b192D49d2Fe8D5014",
+      "why": "1.1.0: block window 24h after snapshot; claim type by code"
+    },
+    {
+      "name": "BurnGate",
+      "address": "0x019C114C50D2a9B3e526E1B473b4840EEE7C0De0",
+      "deploy_tx": "0x713ee878a35553f9f264a27819ae57bf3f9f6447e42d3c18dda5ca48515dd09e",
+      "file": "contracts/BurnGate.py",
+      "commit": "ce9cd9d37c95b482e0941ec6b4c7b5f3c7e50692",
+      "bytes": 6296,
+      "sha256": "240f74d736804eae9e7c27350e9412a3071cedc75a9afa8b3f452adc78a865ae",
+      "constructor_args": [
+        "0x85807B7781303c0519a4b53734e04798DAD33fda"
+      ],
+      "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
+      "deployed_at": "2026-10-17T09:07:34.489Z",
+      "mode": "CANONICAL",
+      "superseded_by": "0x16aAcCD15eB1756075bE15e727Ab3eBaBe8d2448",
+      "why": "1.1.0: block window 24h after snapshot; claim type by code"
+    },
+    {
+      "name": "BurnGateDemo",
+      "address": "0x01cc28ff81e5d773F6fAe6b37E4e71b85e2Bc1C4",
+      "deploy_tx": "0xbe4c68dd71c8454f2bb0e03b4c88dd4d16ee600847d1ec5f0161f91681c44b1e",
+      "file": "contracts/BurnGate.py",
+      "commit": "ce9cd9d37c95b482e0941ec6b4c7b5f3c7e50692",
+      "bytes": 6296,
+      "sha256": "240f74d736804eae9e7c27350e9412a3071cedc75a9afa8b3f452adc78a865ae",
+      "constructor_args": [
+        "0x9433099Eb1Ece546c9A092A09D9695c23fc12353"
+      ],
+      "deployer": "0x141e1F6b3A945a07c49a56151279a1F308Ca7408",
+      "deployed_at": "2026-10-17T09:07:43.023Z",
+      "mode": "DEMO",
+      "superseded_by": "0x307ed86b8CccAb6841ae18FaE1c559C89d7F606E",
+      "why": "1.1.0: block window 24h after snapshot; claim type by code"
     }
   ]
 }
