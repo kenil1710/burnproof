@@ -16,11 +16,25 @@ const address = dep.contracts.BurnProof.address;
 const roles = ["filer", "filer", "filer", "filer", "filer", "filer2", "filer2", "filer2", "filer2", "filer2"];
 
 async function finalized() {
-  const res = await fetch("https://eth-pokt.nodies.app", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBlockByNumber", params: ["finalized", false] }),
-  });
-  return parseInt((await res.json()).result.number, 16);
+  // the finalized block from both frozen RPCs; the lower one, so both hold it
+  const urls = ["https://eth-pokt.nodies.app", "https://rpc.mevblocker.io"];
+  const got = [];
+  for (const url of urls) {
+    for (let i = 1; ; i++) {
+      try {
+        const res = await fetch(url, {
+          method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(20_000),
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBlockByNumber", params: ["finalized", false] }),
+        });
+        got.push(parseInt((await res.json()).result.number, 16));
+        break;
+      } catch (e) {
+        if (i >= 8) throw e;
+        await new Promise((r) => setTimeout(r, 5000 * i));
+      }
+    }
+  }
+  return Math.min(...got);
 }
 
 const reader = connect({ address, role: "filer" });
@@ -34,6 +48,25 @@ async function onChain() {
     if (list.length < 50) break;
   }
   return all;
+}
+
+/** The newest file_claim tx (filer or filer2 -> BurnProof) whose calldata holds this quote. */
+async function txOf(quote) {
+  const acc = JSON.parse(readFileSync(new URL("./.accounts.json", import.meta.url), "utf8"));
+  const hits = [];
+  for (const role of ["filer", "filer2"]) {
+    const res = await fetch("https://studio-dev.genlayer.com/api", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sim_getTransactionsForAddress", params: [acc[role].address] }),
+    });
+    for (const tx of (await res.json()).result ?? []) {
+      if (String(tx.to_address).toLowerCase() !== address.toLowerCase()) continue;
+      const cd = Buffer.from(tx.data?.calldata ?? "", "base64").toString("latin1");
+      if (cd.includes(quote)) hits.push(tx);
+    }
+  }
+  hits.sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
+  return hits[0]?.hash ?? null;
 }
 
 const results = [];
@@ -62,6 +95,7 @@ for (let i = 0; i < seeds.length; i++) {
     found = await latest();
     if (found) found.tx = r.hash;
   }
+  if (found && !found.tx) found.tx = await txOf(s.quote);
   if (!found) { console.log(`  ${s.id} NOT ON CHAIN`); results.push({ id: s.id, error: "not on chain" }); continue; }
   console.log(`${s.id} check #${found.check_id} ${found.verdict} ${found.code} - ${found.why}`);
   results.push({ id: s.id, project: s.project, expect: s.expect, ...found });

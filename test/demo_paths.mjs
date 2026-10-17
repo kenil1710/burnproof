@@ -22,11 +22,25 @@ const SHIB_0902 = "https://web.archive.org/web/20210902070016/https://shibatoken
 const AKITA_1224 = "https://web.archive.org/web/20211224103559/https://www.akita.network/";
 
 async function finalized() {
-  const res = await fetch("https://eth-pokt.nodies.app", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBlockByNumber", params: ["finalized", false] }),
-  });
-  return parseInt((await res.json()).result.number, 16);
+  // the finalized block from both frozen RPCs; the lower one, so both hold it
+  const urls = ["https://eth-pokt.nodies.app", "https://rpc.mevblocker.io"];
+  const got = [];
+  for (const url of urls) {
+    for (let i = 1; ; i++) {
+      try {
+        const res = await fetch(url, {
+          method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(20_000),
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBlockByNumber", params: ["finalized", false] }),
+        });
+        got.push(parseInt((await res.json()).result.number, 16));
+        break;
+      } catch (e) {
+        if (i >= 8) throw e;
+        await new Promise((r) => setTimeout(r, 5000 * i));
+      }
+    }
+  }
+  return Math.min(...got);
 }
 
 async function step(label, address, role, fn, args, expect) {
