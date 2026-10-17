@@ -57,6 +57,8 @@ for (let i = 0; i < seeds.length; i++) {
   const latest = async () => (await onChain()).filter((c) => c.snapshot === s.snapshot && c.quote === s.quote).pop();
   let found = await latest();
   if (!found) {
+    // Wayback throttles bursts of fetches from Studio's nodes; space out the filings
+    if (i > 0) await new Promise((r) => setTimeout(r, 120_000));
     const block = s.block;
     const { send } = connect({ address, role: roles[i] });
     console.log(`${s.id} filing as ${roles[i]} at block ${block}`);
