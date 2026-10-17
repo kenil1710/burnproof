@@ -1,0 +1,32 @@
+{
+  "note": "Real burn/supply claims on official project pages, each with an exact Wayback capture. Verdict expectations come from dead-address balances read at the time of research (docs/FEASIBILITY.md).",
+  "seeds": [
+    {"id": "S1", "project": "Shiba Inu (SHIB)", "chain_id": 1, "token": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+     "snapshot": "https://web.archive.org/web/20210902070016/https://shibatoken.com/", "cache": "shibatoken_com___20210902070016.html",
+     "quote": "and then actually burned 40% of its total supply to a dead wallet", "expect": "TRUE"},
+    {"id": "S2", "project": "Shiba Inu (SHIB)", "chain_id": 1, "token": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+     "snapshot": "https://web.archive.org/web/20210604091955/https://shibatoken.com/", "cache": "shibatoken_com___20210604091955.html",
+     "quote": "The remaining 50% was burned to Vitalik Buterin", "expect": "FALSE"},
+    {"id": "S3", "project": "Shiba Inu (SHIB)", "chain_id": 1, "token": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+     "snapshot": "https://web.archive.org/web/20210902070016/https://shibatoken.com/", "cache": "shibatoken_com___20210902070016.html",
+     "quote": "Starting with a supply of 1 quadrillion, our founder, Ryoshi, locked 50% in Uniswap", "expect": "UNVERIFIABLE"},
+    {"id": "S4", "project": "Akita Inu (AKITA)", "chain_id": 1, "token": "0x3301ee63fb29f863f2333bd4466acb46cd8323e6",
+     "snapshot": "https://web.archive.org/web/20211224103559/https://www.akita.network/", "cache": "akita_network___20211224103559.html",
+     "quote": "Percent burned: 7.82%", "expect": "FALSE"},
+    {"id": "S5", "project": "Akita Inu (AKITA)", "chain_id": 1, "token": "0x3301ee63fb29f863f2333bd4466acb46cd8323e6",
+     "snapshot": "https://web.archive.org/web/20211224103559/https://www.akita.network/", "cache": "akita_network___20211224103559.html",
+     "quote": "Max Supply: 100,000,000,000,000", "expect": "TRUE"},
+    {"id": "S6", "project": "FLOKI", "chain_id": 1, "token": "0xcf0c122c6b73ff809c693db761e7baebe62b6a2e",
+     "snapshot": "https://web.archive.org/web/20231231033517/https://floki.com/", "cache": "floki_com___20231231033517.html",
+     "quote": "Total Supply: 10,000,000,000,000", "expect": "TRUE"},
+    {"id": "S7", "project": "Saitama Inu (SAITAMA v1)", "chain_id": 1, "token": "0x8b3192f5eebd8579568a2ed41e6feb402f93f73f",
+     "snapshot": "https://web.archive.org/web/20211230180830/https://saitamatoken.com/", "cache": "saitamatoken_com___20211230180830.html",
+     "quote": "We have already started with 49% of the supply burned.", "expect": "TRUE"},
+    {"id": "S8", "project": "Baby Doge Coin (BabyDoge)", "chain_id": 56, "token": "0xc748673057861a797275cd8a068abb95a902e8de",
+     "snapshot": "https://web.archive.org/web/20220102213647/https://babydoge.com/", "cache": "babydoge_com___20220102213647.html",
+     "quote": "We have burned 41%+ of the supply.", "expect": "TRUE"},
+    {"id": "S9", "project": "Baby Doge Coin (BabyDoge)", "chain_id": 56, "token": "0xc748673057861a797275cd8a068abb95a902e8de",
+     "snapshot": "https://web.archive.org/web/20220102213647/https://babydoge.com/", "cache": "babydoge_com___20220102213647.html",
+     "quote": "Originally created as a meme joke with 420 Quadrillion supply", "expect": "TRUE"}
+  ]
+}
