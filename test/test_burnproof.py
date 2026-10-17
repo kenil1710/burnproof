@@ -93,9 +93,8 @@ class TestVerdicts(Base):
         F.model_answer("SUPPLY_AT_MOST", "10,000,000,000,000")
         self.verdict("TRUE", quote="Total Supply: 10,000,000,000,000")
 
-    def test_bsc_chain(self):
-        F.set_token(56, TOKEN, 9, T(420 * 10 ** 15, 9), (0, 0, T(217 * 10 ** 15, 9), 0))
-        self.verdict("TRUE", chain=56)
+    def test_bsc_not_supported(self):
+        self.refused("UNSUPPORTED_CHAIN", chain=56)
 
     def test_every_dead_address_counts(self):
         for i in range(4):
@@ -123,11 +122,9 @@ class TestVerdicts(Base):
         self.assertEqual(c["token_url"], "https://etherscan.io/token/" + TOKEN)
         self.assertEqual(c["block_url"], "https://etherscan.io/block/" + str(BLOCK))
 
-    def test_bsc_explorer_links(self):
-        F.set_token(56, TOKEN, 9, T(1000, 9), (0, 0, T(500, 9), 0))
-        r = self.file(chain=56)
-        c = self.w.view(self.bp, "get_check", r["check_id"])
-        self.assertTrue(c["token_url"].startswith("https://bscscan.com/token/"))
+    def test_chain_ids_are_exact(self):
+        for cid in (0, 2, 10, 61997, 10 ** 30):
+            self.refused("UNSUPPORTED_CHAIN", chain=cid)
 
 
 # ---------------------------------------------------------------- tolerance
@@ -820,11 +817,10 @@ class TestChain(Base):
         self.assertTrue(stub.WEB.chains[F.ETH_A].log)
         self.assertTrue(stub.WEB.chains[F.ETH_B].log)
 
-    def test_bsc_uses_bsc_rpcs(self):
-        F.set_token(56, TOKEN, 9, T(1000, 9), (0, 0, T(500, 9), 0))
-        self.file(chain=56)
-        self.assertTrue(stub.WEB.chains[F.BSC_A].log)
-        self.assertFalse(stub.WEB.chains[F.ETH_A].log)
+    def test_only_the_two_frozen_rpcs_are_used(self):
+        self.file()
+        for u in stub.WEB.log:
+            self.assertTrue(u in (F.ETH_A, F.ETH_B) or u.startswith("https://web.archive.org/web/"), u)
 
     def test_record_holds_block_hash_and_time(self):
         r = self.file()
@@ -1097,13 +1093,13 @@ class TestViews(Base):
     def test_tokens_are_separate(self):
         self.file()
         self.assertEqual(self.w.view(self.bp, "latest_verdict", 1, TOKEN9, "")["verdict"], "NONE")
-        self.assertEqual(self.w.view(self.bp, "latest_verdict", 56, TOKEN, "")["verdict"], "NONE")
+        self.assertEqual(self.w.view(self.bp, "latest_verdict", 5, TOKEN, "")["verdict"], "NONE")
 
     def test_get_rules(self):
         r = self.w.view(self.bp, "get_rules")
         self.assertEqual(r["dead_addresses"], list(BP.DEAD))
         self.assertEqual(r["tolerance"], "0.5%")
-        self.assertEqual(sorted(r["chains"]), ["1", "56"])
+        self.assertEqual(sorted(r["chains"]), ["1"])
 
     def test_stats_fresh(self):
         s = self.stats()

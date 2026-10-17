@@ -19,7 +19,6 @@ BLOCK_TS = NOW - 86400
 HOUR = 3600
 DEAD = BP.DEAD
 ETH_A, ETH_B = BP.CHAINS[1][1]
-BSC_A, BSC_B = BP.CHAINS[56][1]
 
 
 def addr(n):

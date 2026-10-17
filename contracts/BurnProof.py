@@ -40,10 +40,10 @@ SUPPLY_AT_MOST = "SUPPLY_AT_MOST"
 CLAIM_TYPES = (BURNED_AMOUNT, BURNED_PERCENT, SUPPLY_AT_MOST)
 
 # chain id -> (name, (RPC A, RPC B), explorer). Both RPCs are archive nodes run
-# by different operators (docs/RULES.md).
+# by different operators and answer GenVM (docs/FEASIBILITY.md). A chain is
+# supported only where two such RPCs exist.
 CHAINS = {
     1: ("ethereum", ("https://eth-pokt.nodies.app", "https://rpc.mevblocker.io"), "https://etherscan.io"),
-    56: ("bsc", ("https://bsc-mainnet.public.blastapi.io", "https://bnb.api.onfinality.io/public"), "https://bscscan.com"),
 }
 
 # Addresses nobody holds a key for. Tokens sent here can never move again,

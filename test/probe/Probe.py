@@ -28,14 +28,18 @@ class Probe(gl.contract.Contract):
                 r["page"] = [getattr(res, "status", None), len(b), type(h).__name__, len(h) if h is not None else -1, hv, [str(k) for k in h][:40] if h is not None else []]
             except Exception as e:
                 r["page"] = "ERR " + repr(e)[:200]
-            for u in json.loads(rpcs):
-                try:
-                    body = json.dumps({"jsonrpc": "2.0", "id": 0, "method": "eth_getBlockByNumber", "params": ["finalized", False]})
-                    res = gl.nondet.web.request(u, method="POST", body=body, headers={"Content-Type": "application/json"})
-                    d = json.loads(res.body.decode("utf-8"))
-                    r[u] = [getattr(res, "status", None), str(d.get("result", d)).replace("'", "")[:90]]
-                except Exception as e:
-                    r[u] = "ERR " + repr(e)[:200]
+            spec = json.loads(rpcs)
+            for u in spec["urls"]:
+                sts = []
+                for i in range(9):
+                    try:
+                        body = json.dumps({"jsonrpc": "2.0", "id": i, "method": "eth_call", "params": [{"to": spec["token"], "data": "0x18160ddd"}, hex(spec["block"])]})
+                        res = gl.nondet.web.request(u, method="POST", body=body, headers={"Content-Type": "application/json"})
+                        d = json.loads(res.body.decode("utf-8"))
+                        sts.append(str(getattr(res, "status", None)) + ("ok" if isinstance(d, dict) and str(d.get("result", "")).startswith("0x") else "E:" + str(d)[:60]))
+                    except Exception as e:
+                        sts.append("X:" + repr(e)[:60])
+                r[u] = sts
             if prompt:
                 try:
                     r["model"] = gl.nondet.exec_prompt(prompt, response_format="json")
