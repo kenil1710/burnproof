@@ -19,7 +19,8 @@
    "snapshot": "https://web.archive.org/web/20210604091955/https://shibatoken.com/",
    "cache": "shibatoken_com___20210604091955.html",
    "quote": "The remaining 50% was burned to Vitalik Buterin",
-   "expect": "FALSE"
+   "expect": "UNVERIFIABLE",
+   "note": "Researched as FALSE on the numbers (41.05% at dead addresses < 50%). On chain both model readings returned NONE: the sentence says the tokens were \"burned to Vitalik Buterin\", i.e. sent to a person, which the prompt does not count as a burn, so code never reached the chain (NOT_A_BURN_CLAIM)."
   },
   {
    "id": "S3",

@@ -54,7 +54,7 @@ async function onChain() {
 async function txOf(quote) {
   const acc = JSON.parse(readFileSync(new URL("./.accounts.json", import.meta.url), "utf8"));
   const hits = [];
-  for (const role of ["filer", "filer2"]) {
+  for (const role of ["filer", "filer2", "filer3", "filer4"]) {
     const res = await fetch("https://studio-dev.genlayer.com/api", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "sim_getTransactionsForAddress", params: [acc[role].address] }),
@@ -69,27 +69,32 @@ async function txOf(quote) {
   return hits[0]?.hash ?? null;
 }
 
+const TRANSPORT = ["PAGE_UNAVAILABLE", "RPC_UNAVAILABLE", "RPC_DISAGREE", "BLOCK_NOT_FINALIZED"];
+// senders for refilings (5 filings per sender per hour on the canonical contract)
+const spare = ["filer3", "filer3", "filer3", "filer3", "filer3", "filer4", "filer4", "filer4", "filer4", "filer4"];
 const results = [];
 for (let i = 0; i < seeds.length; i++) {
   const s = seeds[i];
-  const TRANSPORT = ["PAGE_UNAVAILABLE", "RPC_UNAVAILABLE", "RPC_DISAGREE", "BLOCK_NOT_FINALIZED"];
   const latest = async () => (await onChain()).filter((c) => c.snapshot === s.snapshot && c.quote === s.quote).pop();
   let found = await latest();
-  // a transport failure (archive or RPC did not answer) is a final UNVERIFIABLE
-  // check; the seed is filed again at a newer block, up to 3 times
-  for (let k = 0; k < 3 && found && TRANSPORT.includes(found.code); k++) {
+  if (!found) {
     const block = await finalized();
-    const { send } = connect({ address, role: roles[i] === "filer" ? "filer2" : "filer" });
-    console.log(`${s.id} check #${found.check_id} was ${found.code}; filing again at block ${block}`);
+    const { send } = connect({ address, role: roles[i] });
+    console.log(`${s.id} filing as ${roles[i]} at block ${block}`);
     const r = await send("file_claim", [s.chain_id, s.token, s.snapshot, s.quote, block]);
     console.log(`  ${r.status} ok=${r.ok} ${r.seconds}s ${r.hash}`, returnedJson(r) ?? r.revertReason?.slice(0, 200));
     found = await latest();
     if (found) found.tx = r.hash;
   }
-  if (!found) {
+  // a transport failure (archive or RPC did not answer) is a final UNVERIFIABLE
+  // check; the seed is filed again at a newer block after a cool-down, up to 4 times
+  for (let k = 0; k < 4 && found && TRANSPORT.includes(found.code); k++) {
+    console.log(`${s.id} check #${found.check_id} was ${found.code}; waiting 180 s, then filing again`);
+    await new Promise((r) => setTimeout(r, 180_000));
     const block = await finalized();
-    const { send } = connect({ address, role: roles[i] });
-    console.log(`${s.id} filing as ${roles[i]} at block ${block}`);
+    const role = spare.shift();
+    const { send } = connect({ address, role });
+    console.log(`${s.id} filing again as ${role} at block ${block}`);
     const r = await send("file_claim", [s.chain_id, s.token, s.snapshot, s.quote, block]);
     console.log(`  ${r.status} ok=${r.ok} ${r.seconds}s ${r.hash}`, returnedJson(r) ?? r.revertReason?.slice(0, 200));
     found = await latest();

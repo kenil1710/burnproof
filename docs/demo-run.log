@@ -1,2 +1,9 @@
 
 === demo run 2026-10-17T09:09:23.926Z  BurnProofDemo 0x9433099Eb1Ece546c9A092A09D9695c23fc12353  BurnGateDemo 0x01cc28ff81e5d773F6fAe6b37E4e71b85e2Bc1C4 ===
+
+=== demo run 2026-10-17T09:15:33.491Z  BurnProofDemo 0x9433099Eb1Ece546c9A092A09D9695c23fc12353  BurnGateDemo 0x01cc28ff81e5d773F6fAe6b37E4e71b85e2Bc1C4 ===
+pinned Ethereum finalized block 26211243
+[2026-10-17T09:16:02.297Z] PASS verdict TRUE (SHIB 40% burned)
+    demo -> file_claim([1,"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","https://web.archive.org/web/20210902070016/https://shibatoken.com/","and then actually burned 40% of its total supply to a dead wallet",26211243])
+    tx 0xde618f7c77c4d18619dec489205fc922bd3dcf6332cc42ef15325a3e16357abf status ACCEPTED 28.0s
+    => {"check_id":1,"code":"BURNED_ENOUGH","verdict":"TRUE","why":"dead addresses hold 41.0493% of totalSupply >= claimed 40.0000% -0.5%"}
