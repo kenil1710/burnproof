@@ -25,8 +25,8 @@ const detail = on.seeds.map((c) => {
     `- Quote: "${c.quote}"`,
     `- Archived page: ${c.snapshot} (capture ${c.snapshot_ts}, host \`${c.host}\`)`,
     `- Token: [\`${c.token}\`](${c.token_url}) (Ethereum, ${c.decimals} decimals)`,
-    `- Block: [${c.block}](${c.block_url}), hash \`${c.block_hash}\`, time ${new Date(c.block_time * 1000).toISOString()}`,
-    `- Claim read: ${c.claim_type || "(none)"} \`${c.claim_text || "-"}\`${c.claim_value ? ` = ${c.claim_value}` : ""}`,
+    `- Block: [${c.block}](${c.block_url}), ${c.block_time ? `hash \`${c.block_hash}\`, time ${new Date(c.block_time * 1000).toISOString()}` : "not read"}${c.block_time ? ` (${c.block_time - Date.UTC(+c.snapshot_ts.slice(0, 4), +c.snapshot_ts.slice(4, 6) - 1, +c.snapshot_ts.slice(6, 8), +c.snapshot_ts.slice(8, 10), +c.snapshot_ts.slice(10, 12), +c.snapshot_ts.slice(12, 14)) / 1000} s after the capture)` : ""}`,
+    `- Claim read: ${c.claim_type || "(none)"} \`${c.claim_text || "-"}\`${c.claim_value ? ` = ${c.claim_value}` : ""}${c.claim_by ? `, type named by ${c.claim_by}` : ""}`,
     c.total_supply ? `- totalSupply: ${fmt(c.total_supply, c.decimals)}; at dead addresses: ${fmt(c.burned, c.decimals)} (${c.dead_balances.map((b, i) => `${c.dead_addresses[i].slice(0, 6)}...${c.dead_addresses[i].slice(-4)} ${fmt(b, c.decimals)}`).join(", ")})` : "- Chain: not read (the filing ended before the chain stage)",
     `- Verdict: **${c.verdict}** / \`${c.code}\`: ${c.why}`,
     `- Expected from research: ${s.expect}`,
@@ -35,7 +35,7 @@ const detail = on.seeds.map((c) => {
 });
 writeFileSync(root + "docs/SEEDS.md", [
   "# Seeds", "",
-  `Real burn and supply claims from official project pages, each filed on the canonical BurnProof [\`${dep.BurnProof.address}\`](https://explorer-studio-dev.genlayer.com/address/${dep.BurnProof.address}) at an Ethereum finalized block, each final. The research (sources, rejected candidates, measured balances) is in [FEASIBILITY.md](FEASIBILITY.md). The raw records are in [seeds.onchain.json](seeds.onchain.json) (\`get_check\` output).`, "",
+  `Real burn and supply claims from official project pages, each filed on the canonical BurnProof [\`${dep.BurnProof.address}\`](https://explorer-studio-dev.genlayer.com/address/${dep.BurnProof.address}) at the first Ethereum block at or after its capture time (inside the contract's 24-hour window), each final. Every claim type was named by code (\`claim_by\`), so no verdict depends on a model choice. The research (sources, rejected candidates, measured balances) is in [FEASIBILITY.md](FEASIBILITY.md). The raw records are in [seeds.onchain.json](seeds.onchain.json) (\`get_check\` output).`, "",
   table, "", ...detail].join("\n"));
 const readme = readFileSync(root + "README.md", "utf8");
 const start = readme.indexOf("| Seed | Project |");

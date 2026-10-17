@@ -10,6 +10,7 @@ Researched 2026-10-17 before any contract code was written.
 | Can code tell which capture it got? | Yes. GenVM exposes response headers. Wayback sends `Memento-Datetime` (the exact capture time) and `Link: <original>; rel="original"`. Asking for `...070000id_` returned the 07:00:16 capture after a redirect, so the contract compares `Memento-Datetime` with the timestamp in the URL | Same probe |
 | Is the claim text in the raw HTML (no JavaScript rendering)? | Yes, for every seed below. Checked with the contract's own `page_text()` on the cached captures | `scratch` script run against `contracts/BurnProof.py` |
 | Can two independent archive RPCs answer at a pinned block? | **Ethereum: yes.** `eth-pokt.nodies.app` and `rpc.mevblocker.io` answered `eth_call` 100, 5,000 and 500,000 blocks back, and from inside GenVM answered all 9 calls of a filing. **BSC: no.** From GenVM, only `bsc-mainnet.public.blastapi.io` answered 9 historical calls at 2,000 blocks back. `bnb.api.onfinality.io` returned 429 after the first call, `publicnode` returned 403 ("Archive" required), `drpc` returned 429, and `meowrpc`, `nodies`, `llamarpc`, `blxrbdn`, `ankr` and `defibit` failed or refused historical state. One archive RPC cannot meet the two-RPC rule, so BurnProof supports chain 1 only. A first smoke filing for BabyDoge on BSC ended `UNVERIFIABLE / RPC_UNAVAILABLE` (onfinality: transport), which is why BSC was dropped | Local probe, then a GenVM probe on Studio Dev |
+| Do both Ethereum RPCs serve state from each seed's snapshot date? | **Yes.** At the first block at or after each capture (SHIB 2021-06-04 `12567135` and 2021-09-02 `13144796`, Akita 2021-12-24 `13867390`, Saitama 2021-12-30 `13908188`, FLOKI 2023-12-31 `18902821`), both RPCs answered all 9 calls of a filing (chain id, finalized block, block hash and time, code, `decimals`, `totalSupply`, four `balanceOf`) with identical results, locally and from inside GenVM. This is what makes the 24-hour block window of version 1.1.0 possible | Local probe, then a throwaway GenVM probe contract on Studio Dev (2026-10-17) |
 | Does the model answer JSON on Studio Dev? | Yes (`exec_prompt(..., response_format="json")`) | Probe |
 
 ## Dead-address balances (Ethereum/BSC, latest block, 2026-10-17)
@@ -25,20 +26,30 @@ Researched 2026-10-17 before any contract code was written.
 
 SafeMoon v1 is why `0x0000000000000000000000000000000000000001` is on the dead list: the project burned to it, and it now holds 44% of supply. It is not a seed, because no quote from the archived safemoon.net page has a number in its raw HTML (the counters are filled in by JavaScript).
 
+## Dead-address balances at the snapshot blocks (what the 1.1.0 seeds read)
+
+| Seed | Block (time, UTC) | totalSupply | at dead addresses | share |
+|---|---|---|---|---|
+| S1 SHIB 2021-09-02 | 13144796 (07:00:22) | 999,999,980,899,600 | 410,280,450,693,956 | 41.03% |
+| S2 SHIB 2021-06-04 | 12567135 (09:20:17) | 999,999,980,899,601 | 410,270,177,302,446 | 41.03% |
+| S4/S5 AKITA 2021-12-24 | 13867390 (10:36:17) | 99,999,999,999,999 | 5,019,428,718,076 | 5.02% |
+| S6 FLOKI 2023-12-31 | 18902821 (03:35:23) | 10,000,000,000,000 | 4,290,913,996,604 | 42.91% |
+| S7 SAITAMA 2021-12-30 | 13908188 (18:08:31) | 100,000,000,000,000,000 | 56,088,716,675,594,121 | 56.09% |
+
 ## Seeds
 
 Every quote below was found in the raw capture's page text. The token address for each one appears in that same capture's HTML.
 
 | id | project | capture | quote | expected | why |
 |---|---|---|---|---|---|
-| S1 | Shiba Inu | [shibatoken.com 2021-09-02](https://web.archive.org/web/20210902070016/https://shibatoken.com/) | `and then actually burned 40% of its total supply to a dead wallet` | TRUE | 41.05% at dead addresses, at least 40% |
-| S2 | Shiba Inu | [shibatoken.com 2021-06-04](https://web.archive.org/web/20210604091955/https://shibatoken.com/) | `The remaining 50% was burned to Vitalik Buterin` | FALSE on the numbers; on chain UNVERIFIABLE | Only 41.05% is at dead addresses, below 50% - 0.5%. On chain, both model readings returned NONE: the tokens were "burned to Vitalik Buterin", i.e. sent to a person, and the prompt counts only burns to a dead or burn address. Code therefore never reached the chain and the result is `NOT_A_BURN_CLAIM`. This is the conservative outcome: the model can only withhold a verdict, never produce one |
+| S1 | Shiba Inu | [shibatoken.com 2021-09-02](https://web.archive.org/web/20210902070016/https://shibatoken.com/) | `and then actually burned 40% of its total supply to a dead wallet` | TRUE | 41.03% at dead addresses, at least 40% |
+| S2 | Shiba Inu | [shibatoken.com 2021-06-04](https://web.archive.org/web/20210604091955/https://shibatoken.com/) | `The remaining 50% was burned to Vitalik Buterin` | FALSE | The quote says "burned" and a percent, so code types it `BURNED_PERCENT` without the model. 41.03% is at dead addresses at the snapshot block, short of 50% - 0.5%. The rest of the 50% went to Vitalik Buterin's wallet, which is not a dead address (he burned 90% of it and donated the rest) |
 | S3 | Shiba Inu | [shibatoken.com 2021-09-02](https://web.archive.org/web/20210902070016/https://shibatoken.com/) | `Starting with a supply of 1 quadrillion, our founder, Ryoshi, locked 50% in Uniswap` | UNVERIFIABLE | two claim-shaped numbers (1 quadrillion, 50%) |
 | S4 | Akita Inu | [akita.network 2021-12-24](https://web.archive.org/web/20211224103559/https://www.akita.network/) | `Percent burned: 7.82%` | FALSE | only 5.02% at dead addresses. The site's figure is still displayed in the 2022-05 and 2022-12 captures |
 | S5 | Akita Inu | same capture | `Max Supply: 100,000,000,000,000` | TRUE | totalSupply is exactly 100T |
 | S6 | FLOKI | [floki.com 2023-12-31](https://web.archive.org/web/20231231033517/https://floki.com/) | `Total Supply: 10,000,000,000,000` | TRUE | totalSupply is exactly 10T (9 decimals) |
-| S7 | Saitama v1 | [saitamatoken.com 2021-12-30](https://web.archive.org/web/20211230180830/https://saitamatoken.com/) | `We have already started with 49% of the supply burned.` | TRUE | 59.41% at dead addresses |
+| S7 | Saitama v1 | [saitamatoken.com 2021-12-30](https://web.archive.org/web/20211230180830/https://saitamatoken.com/) | `We have already started with 49% of the supply burned.` | TRUE | 56.09% at dead addresses at the snapshot block |
 
-Expected on the numbers: 4 TRUE, 2 FALSE and 1 UNVERIFIABLE; on chain S2 became a second UNVERIFIABLE (see above) across 4 projects, with 18- and 9-decimal tokens, percent and supply claims, and plain, comma-grouped, decimal and scale-word numbers. Two BabyDoge (BSC) claims were found and checked against the page (`We have burned 41%+ of the supply.`, `Originally created as a meme joke with 420 Quadrillion supply`, [babydoge.com 2022-01-02](https://web.archive.org/web/20220102213647/https://babydoge.com/)). They are not seeds because BSC is not supported (see above). No official page we found states an absolute burned amount in static HTML, so BURNED_AMOUNT is covered only by the offline suite (`TestVerdicts`, `TestTolerance`, `TestDecimals`, `TestNumberFormatsOnChain`).
+Expected: 4 TRUE, 2 FALSE and 1 UNVERIFIABLE across 4 projects, with 18- and 9-decimal tokens, percent and supply claims, and plain, comma-grouped, decimal and scale-word numbers. Every claim type is named by code, so no seed verdict depends on a model choice. Two BabyDoge (BSC) claims were found and checked against the page (`We have burned 41%+ of the supply.`, `Originally created as a meme joke with 420 Quadrillion supply`, [babydoge.com 2022-01-02](https://web.archive.org/web/20220102213647/https://babydoge.com/)). They are not seeds because BurnProof reads chain 1 only (see above). No official page we found states an absolute burned amount in static HTML, so BURNED_AMOUNT is covered by the offline suite (`TestVerdicts`, `TestTolerance`, `TestDecimals`, `TestNumberFormatsOnChain`).
 
 Candidates rejected: dogelonmars.com (claims rendered by JavaScript); safemoon.net (counters are JavaScript); hoge.finance (`50% Burned.` sits in a template that shows 0%/50%/70% states, so it is not one claim); kishu.com (no number); floki.com 2025 (no number).

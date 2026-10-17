@@ -1,6 +1,6 @@
 # BurnProof rules
 
-Every rule below is enforced by code in `contracts/BurnProof.py`. The model never decides whether a claim is covered, and it never decides a verdict.
+Every rule below is enforced by code in `contracts/BurnProof.py` (version 1.1.0). Code names the claim type whenever the quote's own words settle it. The model is asked only for the other quotes, and it never supplies a number.
 
 ## 1. What a filing is
 
@@ -27,7 +27,7 @@ A refused filing reverts. Nothing is stored and no counter moves. A filing that 
 3. Page text: comments, `<script>`, `<style>`, `<noscript>` and `<template>` are dropped. Inline tags (`a abbr b bdi bdo cite code data dfn em font i kbd mark q s samp small span strong sub sup time u var wbr`) are removed without a space, as a browser renders them. Every other tag ends a block. Entities are decoded, then whitespace is collapsed.
 4. The quote, with its whitespace collapsed, must appear **case-sensitively inside one block**. Otherwise: `QUOTE_NOT_ON_PAGE`.
 
-## 3. The number (code) and the claim type (model, validated by code)
+## 3. The number (code) and the claim type (code, or the model validated by code)
 
 A number is `1,234,567` / `1234567` / `7.82`, optionally followed by `%`, ` percent`, ` thousand|million|billion|trillion|quadrillion` (any case), or a `K/M/B/T` suffix written straight after the digits. It is **claim-shaped** if it is a percent, has a scale, or is at least 10,000. Years, dates and small counts are not claim-shaped.
 
@@ -40,14 +40,24 @@ Code ends the filing UNVERIFIABLE, before any model call, when the quote:
 | holds no claim-shaped number | `NO_CLAIM_NUMBER` |
 | holds more than one claim-shaped number | `MULTIPLE_CLAIM_NUMBERS` |
 | its one claim-shaped number is 0 | `ZERO_CLAIM` |
+| it holds a qualifier word (`unburn`, `not burn`, `never burn`, `will `, `to be burn`, `plan`, `schedul`, `target`, `goal`, `fee`, `tax`, `per/each/every transaction`, `liquidity`, ` lp `, `lp token`, `circulat`) | `CLAIM_QUALIFIED` |
 
-The model then reads **only the quote** (never the page) and returns `{"type", "number", "unit"}`, where type is `BURNED_AMOUNT`, `BURNED_PERCENT`, `SUPPLY_AT_MOST` or `NONE`. Code accepts the reading only if:
+Then code names the claim type itself when the quote's words settle it (`code_type()`, case-insensitive, whole words):
+
+| The quote has | Number | Type |
+|---|---|---|
+| `burned` or `burnt` | percent | `BURNED_PERCENT` |
+| `burned` or `burnt`, and no `total supply` / `max supply` / `maximum supply` | not a percent | `BURNED_AMOUNT` |
+| `total supply` / `max supply` / `maximum supply`, and no `burned` / `burnt` | not a percent | `SUPPLY_AT_MOST` |
+
+Code does not name the type, and asks the model, when no row fits, when the quote holds a non-ASCII letter (a look-alike letter could hide a scale word), or when the number is followed by a further scale-like word (`...illion`, `thousand`, `hundred`, `lakh`, `crore`). A check typed by code stores `claim_by = "code"` and makes no model call.
+
+For every other quote the model reads **only the quote** (never the page) and returns `{"type", "number", "unit"}`, where type is `BURNED_AMOUNT`, `BURNED_PERCENT`, `SUPPLY_AT_MOST` or `NONE`. Code accepts the reading only if:
 
 - `number` is written literally in the quote, and `number` plus a scale word from `unit` equals the value **and kind** of the one claim-shaped number code found (`400` + `trillion`, `400T` and `400,000,000,000,000` all pass for the right quote);
-- a percent number has type `BURNED_PERCENT`, and a non-percent number does not;
-- the quote holds none of the qualifier words (`unburn`, `not burn`, `never burn`, `will `, `to be burn`, `plan`, `schedul`, `target`, `goal`, `fee`, `tax`, `per/each/every transaction`, `liquidity`, ` lp `, `lp token`, `circulat`). If it does, the result is `CLAIM_QUALIFIED`, whatever the model said.
+- a percent number has type `BURNED_PERCENT`, and a non-percent number does not.
 
-The leader reads the quote **twice, independently**. If the two readings differ, the result is `READINGS_DIFFER`. `NONE` gives `NOT_A_BURN_CLAIM`. An invalid answer gives `MODEL_OUTPUT_INVALID`, and a model error gives `MODEL_UNAVAILABLE`. **The value used in the verdict is always code's own parse of the quote.** The model only chooses between the claim types that fit that number.
+The leader reads the quote **twice, independently**. If the two readings differ, the result is `READINGS_DIFFER`. `NONE` gives `NOT_A_BURN_CLAIM`. An invalid answer gives `MODEL_OUTPUT_INVALID`, and a model error gives `MODEL_UNAVAILABLE`. **The value used in the verdict is always code's own parse of the quote.** The model only chooses between the claim types that fit that number, and only for quotes code leaves to it. Such a check stores `claim_by = "model"`.
 
 ## 4. The chain read
 
@@ -59,7 +69,8 @@ Both frozen RPCs, `https://eth-pokt.nodies.app` and `https://rpc.mevblocker.io` 
 - `block` is above either RPC's finalized block, gives `BLOCK_NOT_FINALIZED`.
 - The two disagree on any of hash, timestamp, code presence, decimals, supply or any balance, gives `RPC_DISAGREE`.
 - No code at the token, a revert, decimals above 36, zero supply, or dead balances above supply, gives `TOKEN_UNREADABLE`.
-- The block is older than the snapshot, gives `BLOCK_BEFORE_SNAPSHOT`. A claim is only checked against the chain as it stood at or after the claim was archived.
+- The block is older than the snapshot, gives `BLOCK_BEFORE_SNAPSHOT`.
+- The block is more than 24 hours (86,400 s) after the snapshot, gives `BLOCK_AFTER_WINDOW`. A claim is checked against the chain as it stood when the page was archived: `snapshot <= block time <= snapshot + 86400`. `get_rules()` returns the window as `block_window_s`.
 
 ### Dead addresses (frozen)
 
@@ -93,7 +104,7 @@ Every number is read as a floor ("at least"). Hedges like "over" or "nearly" are
 The leader runs the whole check (page, number, two readings, both RPCs, verdict). Each validator re-runs it independently. It must reproduce the leader's result exactly, with its own model reading equal to the leader's. There are two exceptions, both outcomes that assert nothing:
 
 - a leader result of `UNVERIFIABLE` caused by a transport failure (`PAGE_UNAVAILABLE`, `RPC_UNAVAILABLE`, `RPC_DISAGREE`, `BLOCK_NOT_FINALIZED`) is accepted as is. A timeout must still end the filing;
-- a leader result of `UNVERIFIABLE` from the model stage is accepted when the validator finds the same claim-shaped number.
+- a leader result of `UNVERIFIABLE` from the model stage is accepted when the validator finds the same claim-shaped number and code also leaves that quote's type to the model. For a quote typed by code, a model-stage result is rejected.
 
 A validator that cannot reproduce a TRUE or FALSE rejects it. If no leader's result is accepted, the transaction ends without state, and the filing can be sent again.
 
