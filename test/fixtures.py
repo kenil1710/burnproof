@@ -15,7 +15,7 @@ NOW_ISO = "2026-10-17T12:00:00Z"
 NOW = BP.iso_epoch(NOW_ISO)
 FIN = 24_000_000
 BLOCK = 23_999_000
-BLOCK_TS = NOW - 86400
+BLOCK_TS = BP.epoch_of(2021, 12, 24, 11, 35, 59)  # one hour after the snapshot TS
 HOUR = 3600
 DEAD = BP.DEAD
 ETH_A, ETH_B = BP.CHAINS[1][1]
@@ -124,6 +124,18 @@ def deploy(rate_max=5, rate_window=HOUR, demo=False):
     bp = w.deploy("BurnProof", "DEMO" if demo else "CANONICAL", rate_max, rate_window)
     gate = w.deploy("BurnGate", bp)
     return w, bp, gate
+
+
+_extra = [BLOCK + 500]
+
+
+def block_for(ts, after=3600):
+    """A new block on both RPCs, `after` seconds after snapshot `ts`; returns its number."""
+    _extra[0] += 1
+    n = _extra[0]
+    for url in BP.CHAINS[1][1]:
+        stub.WEB.chains[url].set_block(n, BP.epoch_of(*BP.parse_ts(ts)) + after)
+    return n
 
 
 def T(n, dec=18):

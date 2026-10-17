@@ -15,6 +15,9 @@ from fixtures import BP, TOKEN, TOKEN9, FILER, FILER2, FILER3, PROJECT, SITE, SN
 ROOT = Path(__file__).resolve().parent.parent
 QUOTE = "burned 40% of the total supply"
 PAGE = "Since launch our team has burned 40% of the total supply to a dead wallet."
+# a quote with no burn or supply words: code leaves the claim type to the model
+MODEL_QUOTE = "40% of the total supply has been sent"
+MODEL_PAGE = "Since launch 40% of the total supply has been sent to a dead wallet."
 
 
 class Base(unittest.TestCase):
@@ -355,6 +358,13 @@ class TestNumberFormatsOnChain(Base):
 # ---------------------------------------------------------------- model output
 
 class TestModelOutput(Base):
+    def setUp(self):
+        super().setUp()
+        F.page(MODEL_PAGE)
+
+    def file(self, quote=MODEL_QUOTE, **k):
+        return super().file(quote=quote, **k)
+
     def _r(self, answer):
         stub.MODEL.answer = answer
         return self.file()
@@ -380,9 +390,9 @@ class TestModelOutput(Base):
         self.assertEqual(r["code"], "MODEL_OUTPUT_INVALID")
 
     def test_percent_type_with_plain_number(self):
-        F.page("we burned 400,000 tokens so far")
+        F.page("we sent 400,000 tokens to a dead wallet so far")
         F.model_answer("BURNED_PERCENT", "400,000")
-        r = self.file(quote="burned 400,000 tokens so far")
+        r = self.file(quote="sent 400,000 tokens to a dead wallet")
         self.assertEqual(r["code"], "MODEL_OUTPUT_INVALID")
 
     def test_number_missing(self):
@@ -415,11 +425,11 @@ class TestModelOutput(Base):
         self.assertEqual(r["code"], "MODEL_UNAVAILABLE")
 
     def test_readings_differ(self):
-        F.page("We burned 1,000,000 tokens.")
+        F.page("We sent 1,000,000 tokens to a dead wallet.")
         F.set_token(1, TOKEN, 18, T(10 ** 9), (0, 0, T(10 ** 6), 0))
         stub.MODEL.answer = [{"type": "BURNED_AMOUNT", "number": "1,000,000", "unit": ""},
                              {"type": "SUPPLY_AT_MOST", "number": "1,000,000", "unit": ""}]
-        r = self.file(quote="We burned 1,000,000 tokens.")
+        r = self.file(quote="We sent 1,000,000 tokens to a dead wallet.")
         self.assertEqual((r["verdict"], r["code"]), ("UNVERIFIABLE", "READINGS_DIFFER"))
 
     def test_two_readings_are_asked(self):
@@ -430,26 +440,26 @@ class TestModelOutput(Base):
     def test_prompt_holds_only_the_quote(self):
         self.file()
         p = stub.MODEL.prompts[0]
-        self.assertIn(QUOTE, p)
+        self.assertIn(MODEL_QUOTE, p)
         self.assertNotIn("dead wallet", p)  # the rest of the page never reaches the model
         self.assertNotIn(TOKEN, p)
 
     def test_unit_scale_mismatch(self):
-        F.page("A total of 400 trillion tokens burned so far.")
+        F.page("A total of 400 trillion tokens sent to the dead wallet so far.")
         F.model_answer("BURNED_AMOUNT", "400", "billion")
-        r = self.file(quote="400 trillion tokens burned")
+        r = self.file(quote="400 trillion tokens sent to the dead wallet")
         self.assertEqual(r["code"], "MODEL_OUTPUT_INVALID")
 
     def test_unit_missing_scale(self):
-        F.page("A total of 400 trillion tokens burned so far.")
+        F.page("A total of 400 trillion tokens sent to the dead wallet so far.")
         F.model_answer("BURNED_AMOUNT", "400", "")
-        r = self.file(quote="400 trillion tokens burned")
+        r = self.file(quote="400 trillion tokens sent to the dead wallet")
         self.assertEqual(r["code"], "MODEL_OUTPUT_INVALID")
 
     def test_two_scale_words(self):
-        F.page("A total of 400 trillion tokens burned so far.")
+        F.page("A total of 400 trillion tokens sent to the dead wallet so far.")
         F.model_answer("BURNED_AMOUNT", "400", "trillion billion")
-        r = self.file(quote="400 trillion tokens burned")
+        r = self.file(quote="400 trillion tokens sent to the dead wallet")
         self.assertEqual(r["code"], "MODEL_OUTPUT_INVALID")
 
     def test_number_too_long(self):
@@ -683,7 +693,7 @@ class TestDoor(Base):
 
     def test_feb_29_leap_year_ok(self):
         F.page(PAGE, ts="20240229103559")
-        self.verdict("TRUE", snap=F.snap_url("20240229103559"))
+        self.verdict("TRUE", snap=F.snap_url("20240229103559"), block=F.block_for("20240229103559"))
 
     def test_unsupported_chain(self):
         self.refused("UNSUPPORTED_CHAIN", chain=137)
@@ -966,12 +976,12 @@ class TestLimits(Base):
 
 class TestConsensus(Base):
     def test_validator_reading_differs_rolls_back(self):
-        F.page("We burned 1,000,000 tokens.")
+        F.page("We sent 1,000,000 tokens to a dead wallet.")
         F.set_token(1, TOKEN, 18, T(10 ** 9), (0, 0, T(10 ** 6), 0))
         stub.MODEL.answer = lambda p, n: {"type": "BURNED_AMOUNT" if n <= 2 else "SUPPLY_AT_MOST",
                                           "number": "1,000,000", "unit": ""}
         with self.assertRaises(world.Reverted) as cm:
-            self.file(quote="We burned 1,000,000 tokens.")
+            self.file(quote="We sent 1,000,000 tokens to a dead wallet.")
         self.assertIn("UNDETERMINED", cm.exception.msg)
         self.assertEqual(self.stats()["checks"], 0)
 
@@ -1048,10 +1058,152 @@ class TestConsensus(Base):
             self.assertIn(r["verdict"], ("TRUE", "FALSE", "UNVERIFIABLE"))
 
     def test_model_unclear_leader_accepted(self):
+        F.page(MODEL_PAGE)
         stub.MODEL.answer = {"type": "NONE", "number": "", "unit": ""}
-        r = self.file()
+        r = self.file(quote=MODEL_QUOTE)
         self.assertEqual(r["code"], "NOT_A_BURN_CLAIM")
         self.assertTrue(stub.LAST_CONSENSUS["agreed"])
+
+
+# ---------------------------------------------------------------- block window (24 h after the snapshot)
+
+class TestBlockWindow(Base):
+    def test_block_one_hour_after_snapshot_ok(self):
+        self.verdict("TRUE", "BURNED_ENOUGH")
+
+    def test_block_exactly_24h_after_is_ok(self):
+        self.verdict("TRUE", block=F.block_for(TS, 86400))
+
+    def test_block_one_second_past_window(self):
+        r = self.verdict("UNVERIFIABLE", "BLOCK_AFTER_WINDOW", block=F.block_for(TS, 86401))
+        c = self.w.view(self.bp, "get_check", r["check_id"])
+        self.assertEqual(c["stage"], "chain")
+        self.assertTrue(stub.LAST_CONSENSUS["agreed"])
+
+    def test_block_years_later_is_not_judged(self):
+        # the old behaviour: a block from 2026 for a 2021 claim
+        self.verdict("UNVERIFIABLE", "BLOCK_AFTER_WINDOW", block=F.block_for(TS, 5 * 365 * 86400))
+
+    def test_false_claim_true_later_stays_unjudged(self):
+        # 30% at snapshot time, 45% later: the later block cannot make it TRUE
+        F.set_token(1, TOKEN, 18, T(1000), (0, 0, T(300), 0))
+        self.verdict("FALSE", "BURNED_SHORT")
+        later = F.block_for(TS, 2 * 86400)
+        F.set_token(1, TOKEN, 18, T(1000), (0, 0, T(450), 0), block=later)
+        self.verdict("UNVERIFIABLE", "BLOCK_AFTER_WINDOW", block=later)
+
+    def test_window_in_rules(self):
+        self.assertEqual(self.w.view(self.bp, "get_rules")["block_window_s"], 86400)
+
+    def test_validator_rejects_forged_window_pass(self):
+        later = F.block_for(TS, 86401)
+        stub.FORGE["mutate"] = lambda r: dict(r, verdict="TRUE", code="BURNED_ENOUGH", stage="verdict")
+        with self.assertRaises(world.Reverted):
+            self.file(block=later)
+        self.assertEqual(self.stats()["checks"], 0)
+
+
+# ---------------------------------------------------------------- claim type by code
+
+class TestCodeType(Base):
+    def ct(self, quote):
+        cn = BP.claim_number(quote)
+        return BP.code_type(quote, cn["ok"])
+
+    def test_rules(self):
+        cases = {
+            "burned 40% of the total supply": "BURNED_PERCENT",
+            "Percent burned: 7.82%": "BURNED_PERCENT",
+            "49% of the supply burnt": "BURNED_PERCENT",
+            "40% of the total supply has been sent": "",
+            "We burned 1,000,000 tokens.": "BURNED_AMOUNT",
+            "400 trillion tokens burned": "BURNED_AMOUNT",
+            "Max Supply: 100,000,000,000,000": "SUPPLY_AT_MOST",
+            "Total Supply: 10,000,000,000,000": "SUPPLY_AT_MOST",
+            "Maximum supply 1,000,000 tokens": "SUPPLY_AT_MOST",
+            "burned 400,000 of the total supply": "",
+            "We sent 1,000,000 tokens to a dead wallet.": "",
+            "Supply: 1,000,000 tokens": "",
+            "burned 400 thousand million tokens": "",
+            "burned 400,000 zillion tokens": "",
+            "burned 400,000 tr\u0456llion tokens": "",
+            "BURNED 40% OF SUPPLY": "BURNED_PERCENT",
+            "burnedx 40% of supply": "",
+        }
+        for q, want in cases.items():
+            self.assertEqual(self.ct(q), want, q)
+
+    def test_code_typed_quote_never_calls_the_model(self):
+        r = self.verdict("TRUE", "BURNED_ENOUGH")
+        self.assertEqual(stub.MODEL.prompts, [])
+        self.assertEqual(self.w.view(self.bp, "get_check", r["check_id"])["claim_by"], "code")
+
+    def test_model_none_cannot_change_code_typed_verdict(self):
+        F.model_answer("NONE", "")
+        self.verdict("TRUE", "BURNED_ENOUGH")
+        stub.MODEL.raise_next = 5
+        F.set_token(1, TOKEN, 18, T(1000), (0, 0, T(300), 0))
+        self.verdict("FALSE", "BURNED_SHORT", block=F.block_for(TS, 7200))
+
+    def test_model_typed_quote_records_model(self):
+        F.page(MODEL_PAGE)
+        r = self.verdict("TRUE", quote=MODEL_QUOTE)
+        self.assertEqual(self.w.view(self.bp, "get_check", r["check_id"])["claim_by"], "model")
+        self.assertEqual(len(stub.MODEL.prompts), 3)
+
+    def test_qualifier_is_code_first(self):
+        F.page("we burned 40% of the total supply in fees")
+        r = self.verdict("UNVERIFIABLE", "CLAIM_QUALIFIED", quote="burned 40% of the total supply in fees")
+        self.assertEqual(stub.MODEL.prompts, [])
+        self.assertEqual(self.w.view(self.bp, "get_check", r["check_id"])["stage"], "quote")
+
+    def test_validator_rejects_forged_model_stage_on_code_typed_quote(self):
+        stub.FORGE["mutate"] = lambda r: {"verdict": "UNVERIFIABLE", "code": "NOT_A_BURN_CLAIM", "why": "x",
+                                          "stage": "model", "span": "40%"}
+        with self.assertRaises(world.Reverted):
+            self.file()
+        self.assertEqual(self.stats()["checks"], 0)
+
+
+# ---------------------------------------------------------------- every seed quote: verdict by code alone
+
+SEEDS = json.loads((ROOT / "test" / "seeds.json").read_text())["seeds"]
+
+
+class TestSeedQuotesByCode(Base):
+    """Each real seed quote, on a page holding it, with the model forced to say
+    NONE and then to fail: the verdict must be the same both times, so no seed
+    verdict depends on a model choice."""
+
+    def run_seed(self, s, dead_share_permille):
+        F.page("<html><body><p>" + s["quote"] + "</p></body></html>")
+        F.set_token(1, TOKEN, 18, T(10 ** 15), (0, 0, T(10 ** 12 * dead_share_permille), 0))
+        out = []
+        for i, mode in enumerate(("none", "fail")):
+            stub.MODEL.prompts = []
+            if mode == "none":
+                F.model_answer("NONE", "")
+            else:
+                stub.MODEL.raise_next = 10
+            r = self.file(quote=s["quote"], block=F.block_for(TS, 60 + i), sender=[FILER, FILER2][i])
+            out.append((r["verdict"], r["code"]))
+            self.assertEqual(stub.MODEL.prompts, [], s["id"])
+        self.assertEqual(out[0], out[1], s["id"])
+        return out[0]
+
+    def test_every_seed(self):
+        want = {"S1": "BURNED_PERCENT", "S2": "BURNED_PERCENT", "S3": None, "S4": "BURNED_PERCENT",
+                "S5": "SUPPLY_AT_MOST", "S6": "SUPPLY_AT_MOST", "S7": "BURNED_PERCENT"}
+        for s in SEEDS:
+            self.setUp()
+            cn = BP.claim_number(s["quote"])
+            if want[s["id"]] is None:
+                self.assertNotIn("ok", cn, s["id"])
+                self.assertEqual(self.run_seed(s, 410), ("UNVERIFIABLE", "MULTIPLE_CLAIM_NUMBERS"))
+                continue
+            self.assertEqual(BP.code_type(s["quote"], cn["ok"]), want[s["id"]], s["id"])
+            v, _ = self.run_seed(s, 410)
+            self.assertIn(v, ("TRUE", "FALSE"), s["id"])
 
 
 # ---------------------------------------------------------------- views
@@ -1082,7 +1234,7 @@ class TestViews(Base):
     def test_latest_is_by_snapshot_time_not_filing_order(self):
         F.page(PAGE, ts="20220101000000")
         F.set_token(1, TOKEN, 18, T(1000), (0, 0, T(100), 0))
-        self.file(snap=F.snap_url("20220101000000"))          # FALSE, newer snapshot
+        self.file(snap=F.snap_url("20220101000000"), block=F.block_for("20220101000000"))  # FALSE, newer snapshot
         F.set_token(1, TOKEN, 18, T(1000), (0, 0, T(410), 0))
         stub.WEB.chains[F.ETH_A].set_block(BLOCK + 1, F.BLOCK_TS + 12)
         stub.WEB.chains[F.ETH_B].set_block(BLOCK + 1, F.BLOCK_TS + 12)
@@ -1095,7 +1247,7 @@ class TestViews(Base):
         self.file()                                              # FALSE at TS
         F.page(PAGE, ts="20220101000000")
         F.set_token(1, TOKEN, 18, T(1000), (0, 0, T(410), 0))
-        self.file(snap=F.snap_url("20220101000000"))             # TRUE, newer
+        self.file(snap=F.snap_url("20220101000000"), block=F.block_for("20220101000000"))  # TRUE, newer
         self.assertEqual(self.w.view(self.bp, "latest_verdict", 1, TOKEN, "")["decisive_verdict"], "TRUE")
 
     def test_false_wins_tie(self):
@@ -1190,7 +1342,7 @@ class TestGate(Base):
     def test_later_filing_of_older_snapshot_cannot_mask(self):
         F.page(PAGE, ts="20220101000000")
         F.set_token(1, TOKEN, 18, T(1000), (0, 0, T(100), 0))
-        self.file(snap=F.snap_url("20220101000000"))
+        self.file(snap=F.snap_url("20220101000000"), block=F.block_for("20220101000000"))
         F.set_token(1, TOKEN, 18, T(1000), (0, 0, T(410), 0))
         stub.WEB.chains[F.ETH_A].set_block(BLOCK + 1, F.BLOCK_TS + 12)
         stub.WEB.chains[F.ETH_B].set_block(BLOCK + 1, F.BLOCK_TS + 12)
@@ -1209,9 +1361,7 @@ class TestGate(Base):
         self.assertTrue(self.req()["listed"])
         F.page(PAGE, ts="20220101000000")
         F.set_token(1, TOKEN, 18, T(1000), (0, 0, T(100), 0))
-        stub.WEB.chains[F.ETH_A].set_block(BLOCK + 1, F.BLOCK_TS + 12)
-        stub.WEB.chains[F.ETH_B].set_block(BLOCK + 1, F.BLOCK_TS + 12)
-        self.file(snap=F.snap_url("20220101000000"), block=BLOCK + 1)
+        self.file(snap=F.snap_url("20220101000000"), block=F.block_for("20220101000000"))
         self.assertFalse(self.req()["listed"])
         self.assertFalse(self.w.view(self.gate, "is_listed", 1, TOKEN)["listed"])
 

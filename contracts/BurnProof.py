@@ -18,17 +18,20 @@ import typing
 #      the archive must serve exactly that capture (Memento-Datetime) of that
 #      host, and the quote must appear in the page text (whitespace-
 #      normalized, case-sensitive);
-#   2. the quote must hold exactly ONE claim-shaped number; the model reads
-#      only the quote and names the claim type and that number, and code
-#      checks the number is written in the quote and equals the one code found;
+#   2. the quote must hold exactly ONE claim-shaped number and no qualifier
+#      word; code names the claim type when the quote says "burned"/"burnt"
+#      or "total/max supply" unambiguously. Only otherwise does the model read
+#      the quote and name the type, and code checks its number is written in
+#      the quote and equals the one code found;
 #   3. two independent RPCs must answer identically at the pinned finalized
-#      block: totalSupply, decimals and balanceOf for a fixed dead-address list;
+#      block, which must lie within 24 hours after the snapshot: totalSupply,
+#      decimals and balanceOf for a fixed dead-address list;
 #   4. code computes the verdict with a 0.5% tolerance in the claim's favour.
 #
 # Anything that cannot be established ends UNVERIFIABLE, never TRUE or FALSE.
 # Holds no funds; has no owner and no setter.
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 TRUE = "TRUE"
 FALSE = "FALSE"
@@ -57,6 +60,7 @@ DEAD = (
 
 TOL_NUM = 5          # tolerance 0.5% = 5 / 1000
 TOL_DEN = 1000
+MAX_BLOCK_LAG = 86400   # the block must be at most 24 hours after the snapshot
 MIN_QUOTE = 12
 MAX_QUOTE = 400
 MAX_URL = 600
@@ -84,6 +88,7 @@ U_RPC = "RPC_UNAVAILABLE"
 U_RPC_DIFF = "RPC_DISAGREE"
 U_NOT_FINAL = "BLOCK_NOT_FINALIZED"
 U_BEFORE = "BLOCK_BEFORE_SNAPSHOT"
+U_AFTER = "BLOCK_AFTER_WINDOW"
 U_TOKEN = "TOKEN_UNREADABLE"
 U_NO_DEAD = "NO_DEAD_ADDRESS_BURNS"
 MODEL_CODES = (U_MODEL, U_MODEL_BAD, U_NOT_CLAIM, U_READERS, U_QUALIFIED)
@@ -343,6 +348,36 @@ def qualified(quote: str) -> bool:
     return False
 
 
+BURN_RE = re.compile(r"\bburn(?:ed|t)\b", re.IGNORECASE)
+SCALE_WORD_RE = re.compile(r"(?:[a-z]*illion|thousand|hundred|lakh|crore)\b", re.IGNORECASE)
+SUPPLY_RE = re.compile(r"\b(?:total|max|maximum)\s+supply\b", re.IGNORECASE)
+
+
+def code_type(quote: str, span: list) -> str:
+    """The claim type when the quote's own words settle it, else "".
+    A percent with "burned"/"burnt" is BURNED_PERCENT. A non-percent number
+    with "burned"/"burnt" and no "total/max supply" is BURNED_AMOUNT, and with
+    "total/max supply" and no burn word it is SUPPLY_AT_MOST. A quote with a
+    non-ASCII letter, or a number followed by a further scale-like word
+    ("400 thousand million", "5 zillion"), is left to the model, whose answer
+    code then validates."""
+    for ch in quote:
+        if ord(ch) > 127 and ch.isalpha():
+            return ""
+    after = quote[quote.find(span[0]) + len(span[0]):].split()
+    if len(after) > 0 and SCALE_WORD_RE.match(after[0]) is not None:
+        return ""
+    burn = BURN_RE.search(quote) is not None
+    supply = SUPPLY_RE.search(quote) is not None
+    if span[3] == "pct":
+        return BURNED_PERCENT if burn else ""
+    if burn and not supply:
+        return BURNED_AMOUNT
+    if supply and not burn:
+        return SUPPLY_AT_MOST
+    return ""
+
+
 PROMPT = """You read ONE sentence quoted from a crypto token's web page and classify the single burn or supply claim in it.
 
 Return JSON only: {"type": T, "number": N, "unit": U}
@@ -418,7 +453,7 @@ def check_reading(raw: typing.Any, quote: str, span: list) -> dict:
         return {"code": U_MODEL_BAD}
     if qualified(quote):
         return {"code": U_QUALIFIED}
-    return {"type": t, "value": [str(span[1]), str(span[2])], "text": span[0]}
+    return {"type": t, "value": [str(span[1]), str(span[2])], "text": span[0], "by": "model"}
 
 
 # ---- HTTP / JSON-RPC ---------------------------------------------------------
@@ -677,7 +712,13 @@ def front(p: dict) -> dict:
                U_NO_NUMBER: "the quote holds no claim-shaped number",
                U_MANY: "the quote holds more than one claim-shaped number"}[cn["code"]]
         return unv("quote", cn["code"], why)
-    return {"span": cn["ok"]}
+    if qualified(p["quote"]):
+        return unv("quote", U_QUALIFIED, "the quote holds a qualifier word (fee, plan, circulating, not burned, ...)")
+    span = cn["ok"]
+    t = code_type(p["quote"], span)
+    if t != "":
+        return {"span": span, "reading": {"type": t, "value": [str(span[1]), str(span[2])], "text": span[0], "by": "code"}}
+    return {"span": span}
 
 
 def back(p: dict, reading: dict) -> dict:
@@ -687,6 +728,8 @@ def back(p: dict, reading: dict) -> dict:
     c = ch["chain"]
     if c["time"] < p["snap"]["epoch"]:
         return unv("chain", U_BEFORE, "block is older than the snapshot", {"claim": reading, "chain": c})
+    if c["time"] > p["snap"]["epoch"] + MAX_BLOCK_LAG:
+        return unv("chain", U_AFTER, "block is more than 24 hours after the snapshot", {"claim": reading, "chain": c})
     d = decide(reading["type"], reading["value"], c)
     return {"verdict": d["verdict"], "code": d["code"], "why": d["why"], "stage": "verdict",
             "claim": reading, "chain": c}
@@ -700,6 +743,8 @@ def evaluate(p: dict, readings: int) -> dict:
         if "verdict" in f:
             return f
         span = f["span"]
+        if "reading" in f:
+            return back(p, f["reading"])
         first = read_model(p["quote"], span)
         if "code" in first:
             return unv("model", first["code"], "the model reading did not pass code validation", {"span": span[0]})
@@ -724,9 +769,12 @@ def agree(p: dict, theirs: typing.Any) -> bool:
         f = front(p)
         if "verdict" in f:
             return theirs.get("code") == f["code"] and theirs.get("stage") == f["stage"]
-        if theirs.get("stage") == "model" and theirs.get("code") in MODEL_CODES:
+        if "reading" in f:
+            mine = f["reading"]
+        elif theirs.get("stage") == "model" and theirs.get("code") in MODEL_CODES:
             return theirs.get("span") == f["span"][0]
-        mine = read_model(p["quote"], f["span"])
+        else:
+            mine = read_model(p["quote"], f["span"])
         if "code" in mine:
             return False
         if _canon(mine) != _canon(theirs.get("claim")):
@@ -759,6 +807,7 @@ class Check:
     why: str
     stage: str
     claim_type: str
+    claim_by: str
     claim_text: str
     claim_value: str
     decimals: u64
@@ -870,7 +919,7 @@ class BurnProof(gl.contract.Contract):
             snapshot_ts=snap["ts"], original_url=snap["original"], host=snap["host"], quote=q,
             block=u64(blk), filer=sender, filed_at=u64(now), verdict=str(r["verdict"]),
             code=str(r.get("code", ""))[:40], why=str(r.get("why", ""))[:300], stage=str(r.get("stage", ""))[:20],
-            claim_type=str(cl.get("type", "")), claim_text=str(cl.get("text", r.get("span", "")))[:60],
+            claim_type=str(cl.get("type", "")), claim_by=str(cl.get("by", "")), claim_text=str(cl.get("text", r.get("span", "")))[:60],
             claim_value=(str(cl["value"][0]) + "/" + str(cl["value"][1])) if isinstance(cl.get("value"), list) else "",
             decimals=u64(int(c.get("decimals") or 0)), total_supply=str(c.get("supply", "")),
             burned=str(c.get("burned", "")), dead_json=_canon(c.get("dead") or []),
@@ -899,7 +948,7 @@ class BurnProof(gl.contract.Contract):
                 "snapshot": c.snapshot, "snapshot_ts": c.snapshot_ts, "original_url": c.original_url,
                 "host": c.host, "quote": c.quote, "block": int(c.block), "filer": c.filer,
                 "filed_at": int(c.filed_at), "verdict": c.verdict, "code": c.code, "why": c.why,
-                "stage": c.stage, "claim_type": c.claim_type, "claim_text": c.claim_text,
+                "stage": c.stage, "claim_type": c.claim_type, "claim_by": c.claim_by, "claim_text": c.claim_text,
                 "claim_value": c.claim_value, "decimals": int(c.decimals), "total_supply": c.total_supply,
                 "burned": c.burned, "dead_balances": json.loads(c.dead_json or "[]"),
                 "dead_addresses": list(DEAD), "block_hash": c.block_hash, "block_time": int(c.block_time),
@@ -971,7 +1020,7 @@ class BurnProof(gl.contract.Contract):
     def get_rules(self) -> typing.Any:
         return {"version": VERSION, "claim_types": list(CLAIM_TYPES), "dead_addresses": list(DEAD),
                 "chains": {str(k): {"name": v[0], "rpcs": list(v[1]), "explorer": v[2]} for k, v in CHAINS.items()},
-                "tolerance": "0.5%", "quote_chars": [MIN_QUOTE, MAX_QUOTE],
+                "tolerance": "0.5%", "block_window_s": MAX_BLOCK_LAG, "quote_chars": [MIN_QUOTE, MAX_QUOTE],
                 "archive_prefix": ARCHIVE_PREFIX}
 
     @gl.public.view
