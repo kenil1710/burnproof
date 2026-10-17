@@ -1,11 +1,11 @@
 # Final check
 
-Run 2026-10-17T10:21:09.212Z by `tools/final_check.mjs` against commit `5b3832711b` and Studio Dev. **8/10 PASS.**
+Run 2026-10-17T10:22:53.008Z by `tools/final_check.mjs` against commit `9b01b8100f` and Studio Dev. **9/10 PASS.**
 
 ## PASS: Source match: gen_getContractCode byte-identical to contracts/ at HEAD for every deployment, all from one commit, contracts/ unchanged since
 
 ```
-HEAD 5b3832711b399cf1e7626d2618920450ab202287
+HEAD 9b01b8100f5523d5c503fa29f9bf4303ce76254d
 BurnProof            0x85807B7781303c0519a4b53734e04798DAD33fda  chain sha256 f91a03ee469ecd852d05787b4da378c4823425aba7fa151144da88f04c0a24a6  identical to HEAD  matches deployments.json  deploy commit ce9cd9d37c  contracts/ unchanged since
 BurnProofDemo        0x9433099Eb1Ece546c9A092A09D9695c23fc12353  chain sha256 f91a03ee469ecd852d05787b4da378c4823425aba7fa151144da88f04c0a24a6  identical to HEAD  matches deployments.json  deploy commit ce9cd9d37c  contracts/ unchanged since
 BurnGate             0x019C114C50D2a9B3e526E1B473b4840EEE7C0De0  chain sha256 240f74d736804eae9e7c27350e9412a3071cedc75a9afa8b3f452adc78a865ae  identical to HEAD  matches deployments.json  deploy commit ce9cd9d37c  contracts/ unchanged since
@@ -37,10 +37,10 @@ S7 check #7 TRUE/BURNED_ENOUGH (expected TRUE) tx 0x5d4b18eb54 FINALIZED ok
 {"checks":10,"false":1,"mode":"CANONICAL","rate_max":5,"rate_window":3600,"true":4,"unverifiable":5,"version":"1.0.0"}
 ```
 
-## FAIL: Demo: every path on chain (each verdict, each refusal, consumer allow + refuse), all expectations met
+## PASS: Demo: every path on chain (each verdict, each refusal, consumer allow + refuse), all expectations met
 
 ```
-1 PASS, 0 FAIL in the last run of docs/demo-run.log; paths missing: verdict TRUE, verdict FALSE, verdict UNVERIFIABLE, refusal RATE_LIMITED, refusal DUPLICATE, refusal NOT_ARCHIVE_URL, refusal BAD_TIMESTAMP, gate ALLOW, gate REFUSE
+21 PASS, 0 FAIL in the last run of docs/demo-run.log; paths missing: none
 ```
 
 ## PASS: Addresses consistent everywhere (deployments.json = README = SEEDS = SUBMISSION = logs; no other contract address appears)
@@ -72,6 +72,5 @@ missing: none; banned words: none; SUBMISSION ASCII: true
 ## FAIL: Git: keys never committed, no assistant attribution in history or files
 
 ```
-commits touching test/.accounts.json: none; attribution in messages: none; in files: tools/final_check.mjs:155:  const bad = /co-authored-by|claude|anthropic|chatgpt|openai/i.test(msgs);
-tools/final_check.mjs:157:  const words = sh("git", ["grep", "-n", "-i", "-E", "claude|anthropic|chatgpt|co-authored", "--", "."]).stdout.trim();
+commits touching test/.accounts.json: none; attribution in messages: none; in files: docs/FINAL_CHECK.md
 ```
